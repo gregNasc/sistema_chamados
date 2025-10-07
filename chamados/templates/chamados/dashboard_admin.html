@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">📊 Dashboard de Chamados - Admin</h1>
+
+<!-- Grid de gráficos -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    {% if plots %}
+        <!-- Linha 1 -->
+        {% if plots.status %}
+        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+            <h3 class="text-lg font-semibold mb-4">📌 Status</h3>
+            <img src="data:image/png;base64,{{ plots.status }}" alt="Status" class="mx-auto rounded-md">
+        </div>
+        {% endif %}
+
+        {% if plots.regionais %}
+        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+            <h3 class="text-lg font-semibold mb-4">📊 Chamados por Regional</h3>
+            <img src="data:image/png;base64,{{ plots.regionais }}" alt="Regionais" class="mx-auto rounded-md">
+        </div>
+        {% endif %}
+
+        {% if plots.lideres %}
+        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+            <h3 class="text-lg font-semibold mb-4">👔 Principais Líderes</h3>
+            <img src="data:image/png;base64,{{ plots.lideres }}" alt="Líderes" class="mx-auto rounded-md">
+        </div>
+        {% endif %}
+
+        <!-- Linha 2 -->
+        {% if plots.motivos %}
+        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+            <h3 class="text-lg font-semibold mb-4">⚙️ Principais Motivos</h3>
+            <img src="data:image/png;base64,{{ plots.motivos }}" alt="Motivos" class="mx-auto rounded-md">
+        </div>
+        {% endif %}
+
+        {% if plots.tempo_medio %}
+        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition
+                    md:col-start-2 md:col-span-2">
+            <h3 class="text-lg font-semibold mb-4">⏱ Tempo Médio de Suporte</h3>
+            <div class="max-w-full">
+                <img src="data:image/png;base64,{{ plots.tempo_medio }}" alt="Tempo Médio" class="mx-auto rounded-md max-w-[250px]">
+            </div>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <div class="bg-gray-100 text-gray-500 rounded-xl p-8 text-center col-span-full">
+            ⚠️ Nenhum dado disponível para exibir gráficos.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

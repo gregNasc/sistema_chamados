@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>⚠️ Zerar Banco de Dados</h1>
+<p>Esta ação apagará TODOS os dados do banco de dados!</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit">Sim</button>
+    <a href="{% url 'chamados:dashboard' %}">Não</a>
+</form>
+{% endblock %}

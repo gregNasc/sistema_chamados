@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Finalizar Chamado {{ chamado.id }}</h1>
+<form method="post">
+    {% csrf_token %}
+    <label>Deseja acrescentar uma observação?</label>
+    <select name="adicionar_obs" onchange="toggleObservacao(this)">
+        <option value="Não">Não</option>
+        <option value="Sim">Sim</option>
+    </select>
+    <textarea name="observacao" id="observacao" style="display:none"></textarea>
+    <button type="submit">Confirmar Finalização</button>
+</form>
+{% endblock %}

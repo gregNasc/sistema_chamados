@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">📂 Todos os Chamados</h1>
+
+<div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <!-- Scroll horizontal -->
+    <div class="overflow-x-auto">
+        <!-- Scroll vertical com altura limitada -->
+        <div class="max-h-[480px] overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Regional</th>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Loja</th>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Líder</th>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Abertura</th>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Status</th>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Usuário</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for chamado in chamados %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-2">{{ chamado.regional }}</td>
+                        <td class="px-4 py-2">{{ chamado.loja }}</td>
+                        <td class="px-4 py-2">{{ chamado.lider }}</td>
+                        <td class="px-4 py-2">{{ chamado.abertura|date:"d/m/Y H:i" }}</td>
+                        <td class="px-4 py-2">
+                            <span class="
+                                px-2 py-1 rounded-full text-xs font-semibold
+                                {% if chamado.status == 'aberto' %}bg-green-100 text-green-800{% endif %}
+                                {% if chamado.status == 'em andamento' %}bg-yellow-100 text-yellow-800{% endif %}
+                                {% if chamado.status == 'finalizado' %}bg-gray-100 text-gray-700{% endif %}
+                            ">
+                                {{ chamado.status|capfirst }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-2">{{ chamado.usuario }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-4 py-6 text-center text-gray-500">
+                            ⚠️ Nenhum chamado encontrado.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Paginação -->
+<div class="mt-4 flex justify-end gap-2">
+    {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200">« Anterior</a>
+    {% endif %}
+    <span class="px-3 py-1">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200">Próxima »</a>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Chamados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{% static 'chamados/scripts.js' %}" defer></script>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+
+{% if user.is_authenticated %}
+    <!-- Header -->
+    <header class="w-full bg-white shadow px-6 py-4 flex items-center justify-between lg:hidden">
+        <h1 class="text-lg font-bold">📋 Sistema de Chamados</h1>
+        <button id="menu-toggle" class="p-2 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+        </button>
+    </header>
+
+    <div class="flex flex-1">
+        <!-- Sidebar -->
+        <aside id="sidebar"
+               class="fixed inset-y-0 left-0 w-64 bg-white shadow-lg transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col p-6 overflow-y-auto">
+
+            <!-- Usuário -->
+           <div class="mb-6">
+             <h3 class="text-lg font-bold mb-2">👋 Olá, {{ user.username }}</h3>
+                <form method="post" action="{% url 'chamados:logout' %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit" class="text-sm text-red-600 hover:underline bg-none border-none p-0 cursor-pointer">
+                        Sair
+                    </button>
+                </form>
+            </div>
+
+            <!-- Navegação -->
+            <nav class="flex flex-col gap-2 text-sm font-medium mb-6">
+                <a href="{% url 'chamados:dashboard' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📊 Dashboard</a>
+                <a href="{% url 'chamados:chamados_ativos' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📂 Sistema de Chamados</a>
+
+                {% if user.papel|lower == 'admin' %}
+                    <a href="{% url 'chamados:upload_excel' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📤 Upload Excel</a>
+                    <a href="{% url 'chamados:exportar_excel' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📥 Exportar Excel</a>
+                    <hr class="my-3">
+                    <a href="{% url 'chamados:zerar_banco' %}" class="px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">⚠️ Zerar Banco de Dados</a>
+                {% endif %}
+            </nav>
+
+            <!-- Filtros Collapsible -->
+            <form method="get" class="flex flex-col gap-2">
+                {% for col, values in filters.items %}
+                    <div class="border border-gray-300 rounded-md bg-white">
+                        <!-- Cabeçalho do filtro -->
+                        <button type="button"
+                                class="w-full flex justify-between items-center px-3 py-2 font-medium text-gray-700 hover:bg-gray-100 focus:outline-none filter-toggle">
+                            {{ col|capfirst }}
+                            <svg class="w-4 h-4 transition-transform transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <!-- Lista de opções -->
+                        <ul class="flex flex-col gap-1 px-3 py-2 max-h-0 overflow-hidden transition-all duration-300">
+                            {% for value in values %}
+                                <li>
+                                    <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                        <input type="checkbox" name="{{ col }}" value="{{ value }}"
+                                               {% if value in filters_selected|get_item:col %}checked{% endif %}
+                                               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                        <span class="text-gray-800">{{ value }}</span>
+                                    </label>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endfor %}
+                <button type="submit"
+                        class="mt-4 w-full h-10 bg-blue-600 text-white rounded-md font-bold hover:bg-blue-700 transition-colors">
+                    Filtrar
+                </button>
+            </form>
+
+        </aside>
+
+        <!-- Conteúdo -->
+        <main class="flex-1 p-6 lg:ml-64">
+            {% if messages %}
+                <div class="space-y-3 mb-6">
+                    {% for message in messages %}
+                        <div class="
+                            px-4 py-3 rounded-lg shadow text-sm font-medium
+                            {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}
+                            {% if message.tags == 'success' %}bg-green-100 text-green-800{% endif %}
+                            {% if message.tags == 'error' %}bg-red-100 text-red-800{% endif %}
+                            {% if message.tags == 'info' %}bg-blue-100 text-blue-800{% endif %}
+                        ">
+                            {% if message.tags == "warning" %}⚠️{% endif %}
+                            {% if message.tags == "success" %}✅{% endif %}
+                            {% if message.tags == "error" %}❌{% endif %}
+                            {% if message.tags == "info" %}ℹ️{% endif %}
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+{% endif %}
+
+<script>
+  // Toggle sidebar
+  const toggleBtn = document.getElementById("menu-toggle");
+  const sidebar = document.getElementById("sidebar");
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("-translate-x-full");
+    });
+  }
+
+  // Collapsible filters
+  document.querySelectorAll('.filter-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const list = btn.nextElementSibling;
+      const icon = btn.querySelector('svg');
+
+      if (list.style.maxHeight && list.style.maxHeight !== '0px') {
+        list.style.maxHeight = '0';
+        icon.classList.remove('rotate-180');
+      } else {
+        list.style.maxHeight = list.scrollHeight + "px";
+        icon.classList.add('rotate-180');
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

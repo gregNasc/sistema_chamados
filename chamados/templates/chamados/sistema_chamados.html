@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6 text-gray-800">📋 Sistema de Chamados</h1>
+
+<!-- Filtro por data -->
+<form method="get" id="form-filtro" class="flex items-center gap-3 mb-6">
+    <label for="data" class="text-sm font-medium">Filtrar por Data:</label>
+    <input type="date" id="data" name="data" value="{{ data_selecionada }}"
+           class="px-3 py-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+    <button type="submit"
+            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm">
+        Filtrar
+    </button>
+</form>
+
+<hr class="my-6">
+
+<!-- Formulário de cadastro de chamado -->
+<h2 class="text-xl font-semibold mb-4 text-gray-700">📌 Cadastrar Chamado</h2>
+
+<form method="post" id="form-chamado" class="space-y-4 bg-white p-6 rounded-2xl shadow">
+    {% csrf_token %}
+
+    <!-- Regional -->
+    <div>
+        <label for="regional" class="block text-sm font-medium mb-1">Regional</label>
+        <select name="regional" id="regional"
+                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+            <option value="">Selecione uma Regional</option>
+            {% for r in regionais %}
+                <option value="{{ r }}" {% if r == regional_selecionada %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Loja -->
+    <div>
+        <label for="loja" class="block text-sm font-medium mb-1">Loja</label>
+        <select name="loja" id="loja"
+                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+            <option value="">Selecione uma Loja</option>
+            {% for l in lojas %}
+                <option value="{{ l }}" {% if l == loja_selecionada %}selected{% endif %}>{{ l }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Líder -->
+    <div>
+        <label for="lider" class="block text-sm font-medium mb-1">Líder</label>
+        <input list="lideres" name="lider" id="lider"
+               class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+               value="{{ lider_selecionado }}">
+        <datalist id="lideres">
+            {% for lider in lideres %}
+                <option value="{{ lider }}">
+            {% endfor %}
+        </datalist>
+    </div>
+
+    <!-- Motivo -->
+    <div>
+        <label for="motivo" class="block text-sm font-medium mb-1">Motivo</label>
+        <select name="motivo" id="motivo"
+                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+            <option value="">Selecione um Motivo</option>
+            {% if form.fields.motivo.choices %}
+                {% for m in form.fields.motivo.choices %}
+                    <option value="{{ m.0 }}" {% if form.initial.motivo == m.0 %}selected{% endif %}>{{ m.1 }}</option>
+                {% endfor %}
+            {% endif %}
+        </select>
+    </div>
+
+    <!-- Outro Motivo -->
+    <div>
+        <label for="outro_motivo" class="block text-sm font-medium mb-1">Outro Motivo</label>
+        <input type="text" name="outro_motivo" id="outro_motivo"
+               placeholder="Especifique outro motivo" value="{{ form.initial.outro_motivo }}"
+               class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+    </div>
+
+    <button type="submit"
+            class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm">
+        💾 Salvar Chamado
+    </button>
+</form>
+
+<!-- Lista de chamados -->
+<h2 class="text-xl font-semibold mt-10 mb-4 text-gray-700">📂 Chamados Abertos</h2>
+
+{% if chamados %}
+<div class="overflow-x-auto bg-white rounded-2xl shadow">
+    <table class="w-full text-sm text-left border-collapse">
+        <thead class="bg-gray-100 text-gray-600 uppercase text-xs font-semibold">
+            <tr>
+                <th class="px-6 py-3">Motivo</th>
+                <th class="px-6 py-3">Usuário</th>
+                <th class="px-6 py-3">Data de Criação</th>
+                <th class="px-6 py-3">Ação</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for chamado in chamados %}
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-3">{{ chamado.motivo }}</td>
+                <td class="px-6 py-3">{{ chamado.usuario }}</td>
+                <td class="px-6 py-3">{{ chamado.abertura|date:"d/m/Y H:i" }}</td>
+                <td class="px-6 py-3">
+                    <form action="{% url 'chamados:finalizar_chamado' chamado.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="px-3 py-1 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 transition text-xs">
+                            Finalizar
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-gray-500 italic">Não há chamados abertos.</p>
+{% endif %}
+
+<a href="{% url 'chamados:todos_chamados' %}"
+   class="inline-block mt-6 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm">
+   🔎 Ver todos os chamados
+</a>
+
+<!-- AJAX -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(function(){
+    const atualizarLojas = (selecionarValor=false) => {
+        let data = $('#data').val();
+        let regional = $('#regional').val();
+        $.getJSON("{% url 'chamados:lojas_por_regional' %}", {data, regional}, function(resp){
+            let lojaSelect = $('#loja');
+            let lojaSelecionada = "{{ loja_selecionada }}"; // valor do view
+            lojaSelect.empty().append('<option value="">Selecione uma Loja</option>');
+
+            resp.lojas.forEach(loja => lojaSelect.append(`<option value="${loja}">${loja}</option>`));
+
+            if(selecionarValor && lojaSelecionada){
+                lojaSelect.val(lojaSelecionada).change();
+            } else if(selecionarValor && resp.lojas.length > 0){
+                lojaSelect.val(resp.lojas[0]).change();
+            }
+
+            $('#lider').val('');
+        });
+    };
+
+    const atualizarLider = () => {
+        let data = $('#data').val();
+        let loja = $('#loja').val();
+        let liderSelecionado = "{{ lider_selecionado }}"; // valor do view
+        $.getJSON("{% url 'chamados:lider_por_loja' %}", {data, loja}, function(resp){
+            let datalist = $('#lideres');
+            datalist.empty();
+            if(resp.lider){
+                datalist.append(`<option value="${resp.lider}">`);
+                $('#lider').val(resp.lider);
+            } else if(liderSelecionado){
+                $('#lider').val(liderSelecionado);
+            } else {
+                $('#lider').val('');
+            }
+        });
+    };
+
+    $('#regional').change(() => atualizarLojas(true));
+    $('#loja').change(atualizarLider);
+
+    // Preenche LOJA e LÍDER ao carregar a página se houver regional selecionada
+    if ($('#regional').val()) {
+        atualizarLojas(true);
+        atualizarLider();
+    }
+});
+</script>
+{% endblock %}
