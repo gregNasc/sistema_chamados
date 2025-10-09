@@ -17,26 +17,29 @@ class LoginForm(forms.Form):
 class ChamadoForm(forms.ModelForm):
     regional = forms.ChoiceField(label="Regional", choices=[], required=True)
     loja = forms.ChoiceField(label="Loja", choices=[], required=True)
-    lider = forms.ChoiceField(label="Líder", choices=[], required=True)
+    lider = forms.CharField(label="Líder", required=True)  # mudou para CharField
     motivo = forms.ChoiceField(label="Motivo do Suporte", choices=[])
     outro_motivo = forms.CharField(label="Outro Motivo", required=False)
 
     class Meta:
         model = Chamado
-        fields = ['regional', 'loja', 'lider', 'motivo']
+        fields = ['regional', 'loja', 'lider', 'motivo', 'outro_motivo']
 
     def __init__(self, *args, **kwargs):
         regionais = kwargs.pop('regionais', [])
         lojas = kwargs.pop('lojas', [])
         lideres = kwargs.pop('lideres', [])
+        motivos_db = kwargs.pop('motivos_db', [])
+        initial = kwargs.get('initial', {})
         super().__init__(*args, **kwargs)
 
-        # Popula os ChoiceFields
+        # Popula os ChoiceFields com opções do banco
         self.fields['regional'].choices = [('', 'Selecione uma Regional')] + [(r, r) for r in regionais]
         self.fields['loja'].choices = [('', 'Selecione uma Loja')] + [(l, l) for l in lojas]
-        self.fields['lider'].choices = [('', 'Selecione um Líder')] + [(ld, ld) for ld in lideres]
+        # Líder é CharField, então não precisa de choices
+        # self.fields['lider'].choices = [(ld, ld) for ld in lideres]
 
-        # Motivos fixos + banco
+        # Motivos fixos + motivos do banco, sem duplicar
         motivos_fixos = [
             ('', 'Selecione um Motivo'),
             ('FALHA NA IMPRESSÃO', 'FALHA NA IMPRESSÃO'),
@@ -46,20 +49,12 @@ class ChamadoForm(forms.ModelForm):
             ('COLETOR NA CONECTA NA REDE', 'COLETOR NA CONECTA NA REDE'),
             ('OUTRO', 'OUTRO')
         ]
-        motivos_db = [(m['motivo'], m['motivo']) for m in Chamado.objects.values('motivo').distinct() if m['motivo']]
-        self.fields['motivo'].choices = list(dict.fromkeys(motivos_fixos + motivos_db))
+        motivos_completos = motivos_fixos + [(m, m) for m in motivos_db if m not in dict(motivos_fixos)]
+        self.fields['motivo'].choices = motivos_completos
 
-    def clean(self):
-        cleaned_data = super().clean()
-        motivo = cleaned_data.get('motivo')
-        outro_motivo = cleaned_data.get('outro_motivo')
-
-        if motivo == 'OUTRO':
-            if not outro_motivo or not outro_motivo.strip():
-                raise forms.ValidationError("Digite um motivo personalizado.")
-            cleaned_data['motivo'] = outro_motivo.upper().strip()
-
-        return cleaned_data
+        # Mantém valor atual do motivo selecionado ao atualizar página
+        if 'motivo' not in initial and self.instance and self.instance.motivo:
+            self.initial['motivo'] = self.instance.motivo
 
 # ------------------------------
 # Formulário de Upload de Excel

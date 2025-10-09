@@ -74,9 +74,9 @@ def logout_view(request):
 
 @login_required
 def sistema_chamados_view(request):
-    """Exibe chamados e formulário de cadastro"""
-
-    # 🔹 Filtro por data
+    # ------------------------------
+    # Filtro por data
+    # ------------------------------
     data_str = request.GET.get('data', '')
     data_filtro = None
     if data_str:
@@ -85,25 +85,29 @@ def sistema_chamados_view(request):
         except ValueError:
             messages.warning(request, "Data inválida. Mostrando todos os registros.")
 
-    # 🔹 Regional e Loja selecionadas
+
+    # ------------------------------
+    # Regional e Loja selecionadas
+    # ------------------------------
     regional_selecionada = request.GET.get('regional', '')
     loja_selecionada = request.GET.get('loja', '')
 
-    # 🔹 Carrega dados do InventarioExcel
+    # ------------------------------
+    # Carrega dados do InventarioExcel
+    # ------------------------------
     inventario_qs = InventarioExcel.objects.all().order_by('regional', 'loja')
     if data_filtro:
         inventario_qs = inventario_qs.filter(data=data_filtro)
 
     df_excel = pd.DataFrame(list(inventario_qs.values('regional', 'loja', 'lider')))
     if not df_excel.empty:
-        df_excel['regional'] = df_excel['regional'].astype(str).str.strip()
-        df_excel['loja'] = df_excel['loja'].astype(str).str.strip()
-        df_excel['lider'] = df_excel['lider'].astype(str).str.strip()
+        df_excel[['regional', 'loja', 'lider']] = df_excel[['regional', 'loja', 'lider']].astype(str).apply(lambda x: x.str.strip())
 
-    # 🔹 Lista única de regionais
+    # ------------------------------
+    # Listas únicas para filtros
+    # ------------------------------
     regionais = sorted(df_excel['regional'].dropna().unique()) if not df_excel.empty else []
 
-    # 🔹 Filtra lojas e líderes com base na regional selecionada
     if regional_selecionada and not df_excel.empty:
         lojas_filtradas = sorted(df_excel[df_excel['regional'] == regional_selecionada]['loja'].dropna().unique())
         if loja_selecionada:
@@ -114,7 +118,9 @@ def sistema_chamados_view(request):
         lojas_filtradas = sorted(df_excel['loja'].dropna().unique()) if not df_excel.empty else []
         lideres_filtrados = sorted(df_excel['lider'].dropna().unique()) if not df_excel.empty else []
 
-    # 🔹 Busca chamados reais do banco
+    # ------------------------------
+    # Busca chamados reais do banco
+    # ------------------------------
     chamados_qs = Chamado.objects.all().order_by('-data')
     if data_filtro:
         chamados_qs = chamados_qs.filter(data=data_filtro)
@@ -125,22 +131,46 @@ def sistema_chamados_view(request):
 
     chamados_df = pd.DataFrame(list(chamados_qs.values()))
 
-    # 🔹 Formulário com listas filtradas passadas na inicialização
+    # ------------------------------
+    # Lista de motivos do banco
+    # ------------------------------
+    motivos_db = list(
+        chamados_qs.exclude(motivo__isnull=True).exclude(motivo='').values_list('motivo', flat=True).distinct()
+    )
+
+    # ------------------------------
+    # Formulário Chamado
+    # ------------------------------
+    motivo_atual = request.POST.get('motivo') if request.method == 'POST' else None
     form = ChamadoForm(
         request.POST or None,
         regionais=regionais,
         lojas=lojas_filtradas,
-        lideres=lideres_filtrados
+        lideres=lideres_filtrados,
+        motivos_db=motivos_db,
+        initial={'motivo': motivo_atual}  # garante que motivo não desapareça
     )
 
-    # 🔹 Salva chamado se POST válido
+    # ------------------------------
+    # Salva chamado se POST válido
+    # ------------------------------
     if request.method == 'POST' and form.is_valid():
         chamado = form.save(commit=False)
         chamado.usuario = request.user
+        if chamado.motivo == 'OUTRO' and form.cleaned_data.get('outro_motivo'):
+            chamado.outro_motivo = form.cleaned_data['outro_motivo'].upper()
+            chamado.motivo = 'OUTRO'  # mantém o campo motivo
+        else:
+            chamado.outro_motivo = ''
+        if form.cleaned_data.get('lider'):
+            chamado.lider = form.cleaned_data['lider'].upper()
         chamado.save()
         messages.success(request, "✅ Chamado cadastrado!")
         return redirect(f"{request.path}?data={data_str}&regional={regional_selecionada}&loja={loja_selecionada}")
 
+    # ------------------------------
+    # Renderiza template
+    # ------------------------------
     return render(request, 'chamados/sistema_chamados.html', {
         'form': form,
         'dados_excel': df_excel.to_dict('records'),
@@ -153,12 +183,13 @@ def sistema_chamados_view(request):
         'chamados': chamados_df.to_dict('records') if not chamados_df.empty else [],
     })
 
+
 @login_required
 def chamados_ativos(request):
-    # 🔹 Filtra chamados abertos
+    #  Filtra chamados abertos
     chamados = Chamado.objects.filter(status='Aberto')
 
-    # 🔹 Pega data do GET
+    #  Pega data do GET
     data_str = request.GET.get('data')
     if data_str:
         try:
@@ -169,7 +200,7 @@ def chamados_ativos(request):
 
     chamados = chamados.order_by('-abertura')
 
-    # 🔹 Opcional: carregar dados de InventarioExcel para filtros dinâmicos (sidebar, selects)
+    #  Opcional: carregar dados de InventarioExcel para filtros dinâmicos (sidebar, selects)
     inventario_qs = InventarioExcel.objects.all()
     if data_str:
         try:
@@ -177,7 +208,7 @@ def chamados_ativos(request):
         except:
             pass
 
-    # 🔹 Choices dinâmicos para filtros (opcional)
+    #  Choices dinâmicos para filtros (opcional)
     regionais = sorted(inventario_qs.values_list('regional', flat=True).distinct())
     lideres = sorted(inventario_qs.values_list('lider', flat=True).distinct())
 
@@ -340,11 +371,11 @@ def gerar_grafico_tempo_medio(df, titulo="Tempo Médio de Suporte"):
     return imagem_para_base64(fig)
 @login_required
 def dashboard_view(request):
-    # 🔹 Pega filtros do GET
+    #  Pega filtros do GET
     filtros = {col: request.GET.getlist(col) for col in ['regional', 'status', 'motivo', 'lider']}
     qs = Chamado.objects.all()
 
-    # 🔹 Aplica filtros dinâmicos
+    #  Aplica filtros dinâmicos
     if filtros['regional']:
         qs = qs.filter(regional__in=filtros['regional'])
     if filtros['status']:
@@ -354,10 +385,10 @@ def dashboard_view(request):
     if filtros['lider']:
         qs = qs.filter(lider__in=filtros['lider'])
 
-    # 🔹 Converte queryset em DataFrame
+    #  Converte queryset em DataFrame
     df = pd.DataFrame(list(qs.values()))
 
-    # 🔹 Converte colunas datetime para string, evitando NaT
+    #  Converte colunas datetime para string, evitando NaT
     for col in df.select_dtypes(include=['datetime64[ns]', 'datetime64[ns, UTC]']).columns:
         df[col] = pd.to_datetime(df[col], errors='coerce')
 
@@ -367,13 +398,13 @@ def dashboard_view(request):
             notna_mask = df[col].notna()
             df.loc[notna_mask, col] = df.loc[notna_mask, col].dt.tz_convert(None)
 
-    # 🔹 Filtros disponíveis (somente valores únicos e não nulos)
+    #  Filtros disponíveis (somente valores únicos e não nulos)
     filtros_disponiveis = {col: df[col].dropna().unique().tolist() for col in ['regional','status','motivo','lider']} if not df.empty else {}
 
     plots = {}
     template = 'chamados/dashboard_usuario.html'
 
-    # 🔹 Admin tem todos os gráficos
+    #  Admin tem todos os gráficos
     if not df.empty:
         df_grafico = df.copy()  # para usar nos gráficos
 
@@ -470,5 +501,5 @@ def zerar_banco_view(request):
         # ⚠️ Apenas apaga os chamados reais, sem tocar no InventarioExcel ou usuários
         Chamado.objects.all().delete()
         messages.success(request, "✅ Todos os chamados foram zerados com sucesso!")
-        return redirect('dashboard_view')  # Nome da sua view de dashboard atualizado
+        return redirect('dashboard')  # Nome da sua view de dashboard atualizado
     return render(request, 'chamados/confirm_zerar.html')
