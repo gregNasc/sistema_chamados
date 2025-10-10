@@ -1,4 +1,6 @@
 from pathlib import Path
+from decouple import config
+import dj_database_url
 import os
 
 # ------------------------------
@@ -9,9 +11,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ------------------------------
 # SEGURANÇA
 # ------------------------------
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-6=2wbklzetya@d6mvys#4$n6)4l=ce5i!q!u&fv5$6d4jmwy42')
-DEBUG = True
-ALLOWED_HOSTS = []
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-6=2wbklzetya@d6mvys#4$n6)4l=ce5i!q!u&fv5$6d4jmwy42')
+DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = ['sistema-chamados-1-tp25.onrender.com', '127.0.0.1', 'localhost']
 
 # ------------------------------
 # LOGIN
@@ -82,19 +84,26 @@ AUTH_USER_MODEL = 'chamados.CustomUser'
 # ------------------------------
 # BANCO DE DADOS - POSTGRESQL
 # ------------------------------
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'sistema_chamados',
-        'USER': 'postgres',
-        'PASSWORD': 'admininventory',
-        'HOST': 'localhost',
-        'PORT': '5432',
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
+# Banco de dados
+if os.environ.get('RENDER') == 'true':
+    # Banco do Render
+    DATABASES = {
+        'default': dj_database_url.parse(config('DATABASE_URL'), conn_max_age=600)
+    }
+else:
+    # Banco local
+    DATABASES = {
+        'default': {
+            'ENGINE': config('DB_ENGINE'),
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER'),
+            'PASSWORD': config('DB_PASSWORD'),
+            'HOST': config('DB_HOST'),
+            'PORT': config('DB_PORT'),
+            'OPTIONS': {'client_encoding': 'UTF8'},
         }
     }
-}
+
 
 # ------------------------------
 # VALIDAÇÃO DE SENHA
