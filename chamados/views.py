@@ -9,7 +9,7 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.conf import settings
 from django.urls import reverse
-
+from django.views.decorators.cache import never_cache
 from .utils import carregar_chamados_excel
 from .forms import LoginForm, ChamadoForm, UploadExcelForm
 from .models import Chamado, CustomUser, InventarioExcel
@@ -73,6 +73,7 @@ def logout_view(request):
 # ------------------------------
 
 @login_required
+@login_required
 def sistema_chamados_view(request):
     # ------------------------------
     # Filtro por data
@@ -85,12 +86,12 @@ def sistema_chamados_view(request):
         except ValueError:
             messages.warning(request, "Data inválida. Mostrando todos os registros.")
 
-
     # ------------------------------
-    # Regional e Loja selecionadas
+    # Regional, Loja e Líder selecionados
     # ------------------------------
     regional_selecionada = request.GET.get('regional', '')
     loja_selecionada = request.GET.get('loja', '')
+    lider_selecionado = request.GET.get('lider', '')
 
     # ------------------------------
     # Carrega dados do InventarioExcel
@@ -148,7 +149,10 @@ def sistema_chamados_view(request):
         lojas=lojas_filtradas,
         lideres=lideres_filtrados,
         motivos_db=motivos_db,
-        initial={'motivo': motivo_atual}  # garante que motivo não desapareça
+        initial={
+            'motivo': motivo_atual,  # garante que motivo não desapareça
+            'lider': lider_selecionado  # mantém o líder selecionado
+        }
     )
 
     # ------------------------------
@@ -159,14 +163,18 @@ def sistema_chamados_view(request):
         chamado.usuario = request.user
         if chamado.motivo == 'OUTRO' and form.cleaned_data.get('outro_motivo'):
             chamado.outro_motivo = form.cleaned_data['outro_motivo'].upper()
-            chamado.motivo = 'OUTRO'  # mantém o campo motivo
+            chamado.motivo = 'OUTRO'
         else:
             chamado.outro_motivo = ''
         if form.cleaned_data.get('lider'):
             chamado.lider = form.cleaned_data['lider'].upper()
         chamado.save()
         messages.success(request, "✅ Chamado cadastrado!")
-        return redirect(f"{request.path}?data={data_str}&regional={regional_selecionada}&loja={loja_selecionada}")
+
+        # Preserva filtros e líder no redirect
+        return redirect(
+            f"{request.path}?data={data_str}&regional={regional_selecionada}&loja={loja_selecionada}&lider={form.cleaned_data.get('lider', '')}"
+        )
 
     # ------------------------------
     # Renderiza template
@@ -182,6 +190,7 @@ def sistema_chamados_view(request):
         'loja_selecionada': loja_selecionada,
         'chamados': chamados_df.to_dict('records') if not chamados_df.empty else [],
     })
+
 
 
 @login_required
@@ -501,5 +510,5 @@ def zerar_banco_view(request):
         # ⚠️ Apenas apaga os chamados reais, sem tocar no InventarioExcel ou usuários
         Chamado.objects.all().delete()
         messages.success(request, "✅ Todos os chamados foram zerados com sucesso!")
-        return redirect('dashboard')  # Nome da sua view de dashboard atualizado
+        return redirect('chamados:dashboard')  # Nome da sua view de dashboard atualizado
     return render(request, 'chamados/confirm_zerar.html')

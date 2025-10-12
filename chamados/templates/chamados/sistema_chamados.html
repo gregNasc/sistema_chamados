@@ -61,79 +61,22 @@
     </div>
 
     <!-- Motivo -->
-<div>
-    <label for="motivo" class="block text-sm font-medium mb-1">Motivo</label>
-    <select name="motivo" id="motivo"
-            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-        <option value="">Selecione um Motivo</option>
-    </select>
-</div>
+    <div>
+        <label for="motivo" class="block text-sm font-medium mb-1">Motivo</label>
+        <select name="motivo" id="motivo"
+                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+            <option value="">Selecione um Motivo</option>
+        </select>
+    </div>
 
-<!-- Outro Motivo -->
-<div id="div_outro_motivo" style="display:none;">
-    <label for="outro_motivo" class="block text-sm font-medium mb-1">Outro Motivo</label>
-    <input type="text" name="outro_motivo" id="outro_motivo"
-           placeholder="Especifique outro motivo"
-           value="{{ form.outro_motivo.value|default:'' }}"
-           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase">
-</div>
-
-
-
-<script>
-// Lista de motivos fixos + motivos do banco
-const motivosFixos = [
-    '', // opção vazia
-    'FALHA NA IMPRESSÃO',
-    'IMPRESSORA QUEIMADA',
-    'ROUTER NÃO FUNCIONA',
-    'NOTEBOOK NÃO LIGA',
-    'COLETOR NA CONECTA NA REDE',
-    'OUTRO'
-];
-
-// Adiciona motivos do banco, evitando duplicados
-const motivosDB = [
-    {% for m in form.fields.motivo.choices %}
-        '{{ m.0 }}',
-    {% endfor %}
-].filter(m => !motivosFixos.includes(m));
-
-const todosMotivos = motivosFixos.concat(motivosDB);
-
-// Popula select
-const motivoSelect = document.getElementById('motivo');
-todosMotivos.forEach(m => {
-    const option = document.createElement('option');
-    option.value = m;
-    option.textContent = m;
-    if ("{{ form.motivo.value }}" === m) option.selected = true; // seleciona valor atual
-    motivoSelect.appendChild(option);
-});
-
-// Mostra/oculta Outro Motivo
-const outroMotivoDiv = document.getElementById('div_outro_motivo');
-motivoSelect.addEventListener('change', () => {
-    if(motivoSelect.value === 'OUTRO'){
-        outroMotivoDiv.style.display = 'block';
-    } else {
-        outroMotivoDiv.style.display = 'none';
-        document.getElementById('outro_motivo').value = '';
-    }
-});
-
-// Inicializa exibição
-if(motivoSelect.value === 'OUTRO'){
-    outroMotivoDiv.style.display = 'block';
-} else {
-    outroMotivoDiv.style.display = 'none';
-}
-
-$('#form-chamado').on('submit', function() {
-    $('#lider').val($('#lider').val().toUpperCase());
-    $('#outro_motivo').val($('#outro_motivo').val().toUpperCase());
-});
-</script>
+    <!-- Outro Motivo -->
+    <div id="div_outro_motivo" style="display:none;">
+        <label for="outro_motivo" class="block text-sm font-medium mb-1">Outro Motivo</label>
+        <input type="text" name="outro_motivo" id="outro_motivo"
+               placeholder="Especifique outro motivo"
+               value="{{ form.outro_motivo.value|default:'' }}"
+               class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase">
+    </div>
 
     <button type="submit"
             class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm">
@@ -160,16 +103,18 @@ $('#form-chamado').on('submit', function() {
         </thead>
         <tbody class="divide-y divide-gray-200">
             {% for chamado in chamados %}
-            <tr class="hover:bg-gray-50 transition">
+            <tr class="hover:bg-gray-50 transition" data-status="{{ chamado.status }}">
                 <td class="px-4 py-2">{{ chamado.regional }}</td>
                 <td class="px-4 py-2">{{ chamado.loja }}</td>
                 <td class="px-4 py-2">{{ chamado.lider }}</td>
-                <td class="px-6 py-3">{% if chamado.motivo == "OUTRO" and chamado.outro_motivo %}{{ chamado.motivo }}: {{ chamado.outro_motivo }}
+                <td class="px-6 py-3">
+                    {% if chamado.motivo == "OUTRO" and chamado.outro_motivo %}
+                        {{ chamado.motivo }}: {{ chamado.outro_motivo }}
                     {% else %}
-                    {{ chamado.motivo }}
+                        {{ chamado.motivo }}
                     {% endif %}
                 </td>
-                <td class="px-6 py-3">{{ chamado.usuario }}</td>
+                <td class="px-4 py-2">{{ chamado.usuario }}</td>
                 <td class="px-6 py-3">{{ chamado.abertura|date:"d/m/Y H:i" }}</td>
                 <td class="px-6 py-3">
                     <button class="px-3 py-1 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 transition text-xs"
@@ -194,7 +139,7 @@ $('#form-chamado').on('submit', function() {
 <!-- Modal Finalizar Chamado -->
 <div id="modal-finalizar" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
     <div class="bg-white p-6 rounded-2xl shadow w-96">
-        <h2 class="text-lg font-bold mb-4">Finalizar Chamado</h2>
+        <h2 class="text-lg font-bold mb-4">Finalizar Chamado {{ chamado.loja }}</h2>
         <form method="post" id="form-finalizar">
             {% csrf_token %}
             <label>Deseja acrescentar uma observação?</label>
@@ -213,33 +158,85 @@ $('#form-chamado').on('submit', function() {
     </div>
 </div>
 
-<!-- Scripts -->
+<!-- SCRIPTS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+function inicializarFormulario() {
+    const motivosFixos = [
+        '',
+        'FALHA NA IMPRESSÃO',
+        'IMPRESSORA QUEIMADA',
+        'ROUTER NÃO FUNCIONA',
+        'NOTEBOOK NÃO LIGA',
+        'COLETOR NA CONECTA NA REDE',
+        'OUTRO'
+    ];
+
+    const motivosDB = [
+        {% for m in form.fields.motivo.choices %}
+            '{{ m.0 }}',
+        {% endfor %}
+    ].filter(m => !motivosFixos.includes(m));
+
+    const todosMotivos = motivosFixos.concat(motivosDB);
+    const motivoSelect = document.getElementById('motivo');
+
+    // Popula corretamente mesmo após voltar de outra aba
+    motivoSelect.innerHTML = '';
+    todosMotivos.forEach(m => {
+        const option = document.createElement('option');
+        option.value = m;
+        option.textContent = m;
+        if ("{{ form.motivo.value }}" === m) option.selected = true;
+        motivoSelect.appendChild(option);
+    });
+
+    const outroDiv = document.getElementById('div_outro_motivo');
+    outroDiv.style.display = motivoSelect.value === 'OUTRO' ? 'block' : 'none';
+
+    motivoSelect.addEventListener('change', () => {
+        outroDiv.style.display = motivoSelect.value === 'OUTRO' ? 'block' : 'none';
+    });
+}
+
+// Inicializa no carregamento normal
+window.addEventListener('DOMContentLoaded', () => {
+    inicializarFormulario();
+
+    // Filtro de chamados abertos (apenas frontend)
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        if (row.dataset.status !== 'Aberto') {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// Inicializa também ao restaurar do bfcache sem resetar o formulário
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        inicializarFormulario();
+        // mantém todos os valores previamente preenchidos, sem reset
+    }
+});
+</script>
+
 <script>
 $(function(){
-
-    // Atualiza lojas com base na regional
-    const atualizarLojas = (selecionarValor=false) => {
+    function atualizarLojas(selecionarValor=false) {
         let data = $('#data').val();
         let regional = $('#regional').val();
         $.getJSON("{% url 'chamados:lojas_por_regional' %}", {data, regional}, function(resp){
             let lojaSelect = $('#loja');
-            let lojaSelecionada = "{{ loja_selecionada }}";
             lojaSelect.empty().append('<option value="">Selecione uma Loja</option>');
             resp.lojas.forEach(loja => lojaSelect.append(`<option value="${loja}">${loja}</option>`));
-
-            if(selecionarValor && lojaSelecionada){
-                lojaSelect.val(lojaSelecionada).change();
-            } else if(selecionarValor && resp.lojas.length > 0){
-                lojaSelect.val(resp.lojas[0]).change();
-            }
-
+            if(selecionarValor && resp.lojas.length > 0) lojaSelect.val(resp.lojas[0]).change();
             $('#lider').val('');
         });
-    };
+    }
 
-    // Atualiza líder com base na loja
-    const atualizarLider = () => {
+    function atualizarLider() {
         let data = $('#data').val();
         let loja = $('#loja').val();
         $.getJSON("{% url 'chamados:lider_por_loja' %}", {data, loja}, function(resp){
@@ -248,44 +245,23 @@ $(function(){
             if(resp.lider){
                 datalist.append(`<option value="${resp.lider}">`);
                 $('#lider').val(resp.lider);
-            } else {
-                $('#lider').val('');
-            }
+            } else $('#lider').val('');
         });
-    };
+    }
 
-    // Campo Motivo → Outro Motivo
-    const motivoSelect = $('#motivo');
-    const outroMotivoDiv = $('#div_outro_motivo');
-    const toggleOutroMotivo = () => {
-        if(motivoSelect.val() === 'OUTRO'){
-            outroMotivoDiv.show();
-        } else {
-            outroMotivoDiv.hide();
-            $('#outro_motivo').val('');
-        }
-    };
-
-    motivoSelect.change(toggleOutroMotivo);
-    toggleOutroMotivo(); // inicializa
-
-    // Eventos
     $('#regional').change(() => atualizarLojas(true));
     $('#loja').change(atualizarLider);
 
-    // Inicialização
     if ($('#regional').val()) {
         atualizarLojas(true);
         atualizarLider();
     }
 });
 
-// Modal Finalizar Chamado
 function abrirModal(id){
     $('#modal-finalizar').show();
     $('#form-finalizar').attr('action', `/finalizar/${id}/`);
     $('#observacao').hide();
-    $('#form-finalizar select[name="adicionar_obs"]').val('Não');
 }
 
 function fecharModal(){
@@ -293,11 +269,8 @@ function fecharModal(){
 }
 
 function toggleObservacao(select){
-    if(select.value === 'Sim'){
-        $('#observacao').show();
-    } else {
-        $('#observacao').hide().val('');
-    }
+    if(select.value === 'Sim') $('#observacao').show();
+    else $('#observacao').hide().val('');
 }
 </script>
 {% endblock %}

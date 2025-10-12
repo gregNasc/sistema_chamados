@@ -6,8 +6,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Chamados</title>
+
+    <!-- Tailwind (ok deixar aqui) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="{% static 'chamados/scripts.js' %}" defer></script>
+
+    <!-- ✅ Adicione o jQuery antes de scripts.js -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- ✅ Seu script vem depois, sem 'defer' -->
+    <script src="{% static 'chamados/scripts.js' %}"></script>
+</head>
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
 
