@@ -191,8 +191,6 @@ def sistema_chamados_view(request):
         'chamados': chamados_df.to_dict('records') if not chamados_df.empty else [],
     })
 
-
-
 @login_required
 def chamados_ativos(request):
     #  Filtra chamados abertos
@@ -471,8 +469,10 @@ def upload_excel(request):
 
             # Salva no InventarioExcel (Excel como base, não chamados reais)
             for _, row in df.iterrows():
-                data_valor = row['DATA'] if 'DATA' in df.columns else None
-                if pd.isna(data_valor):
+                data_valor = row.get('DATA')
+
+                # Trata células vazias ou inválidas
+                if pd.isna(data_valor) or str(data_valor).strip() == "":
                     data_valor = None
                 else:
                     try:
@@ -481,9 +481,9 @@ def upload_excel(request):
                         data_valor = None  # se a data não for válida, ignora
 
                 InventarioExcel.objects.create(
-                    loja=row['LOJA'],
-                    regional=row['REGIONAL'],
-                    lider=row['LÍDER'],
+                    loja=str(row.get('LOJA', '')).strip(),
+                    regional=str(row.get('REGIONAL', '')).strip(),
+                    lider=str(row.get('LÍDER', '')).strip(),
                     data=data_valor,
                 )
 
