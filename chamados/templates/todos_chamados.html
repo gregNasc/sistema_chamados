@@ -15,9 +15,11 @@
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Regional</th>
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Loja</th>
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Líder</th>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Motivo</th>
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Abertura</th>
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Status</th>
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Usuário</th>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Observação</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -26,6 +28,13 @@
                         <td class="px-4 py-2">{{ chamado.regional }}</td>
                         <td class="px-4 py-2">{{ chamado.loja }}</td>
                         <td class="px-4 py-2">{{ chamado.lider }}</td>
+                        <td class="px-6 py-3">
+                              {% if chamado.motivo == "OUTRO" and chamado.outro_motivo %}
+                              {{ chamado.motivo }}: {{ chamado.outro_motivo }}
+                            {% else %}
+                              {{ chamado.motivo }}
+                            {% endif %}
+                        </td>
                         <td class="px-4 py-2">{{ chamado.abertura|date:"d/m/Y H:i" }}</td>
                         <td class="px-4 py-2">
                             <span class="
@@ -38,6 +47,11 @@
                             </span>
                         </td>
                         <td class="px-4 py-2">{{ chamado.usuario }}</td>
+                        <td class="px-4 py-2">
+                            <div class="max-h-[60px] overflow-y-auto">
+                                {{ chamado.observacao|default_if_none:"" }}
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>

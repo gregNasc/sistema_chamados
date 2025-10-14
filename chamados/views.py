@@ -20,7 +20,7 @@ import seaborn as sns
 import io
 import base64
 import os
-
+import matplotlib.ticker as mticker
 from datetime import datetime
 import pandas as pd
 from django.contrib import messages
@@ -233,6 +233,10 @@ def finalizar_chamado_view(request, pk):
         chamado.status = 'Finalizado'
         chamado.fechamento = timezone.now()
         chamado.observacao = request.POST.get('observacao', '')
+        if chamado.abertura:
+            chamado.duracao = chamado.fechamento - chamado.abertura
+        else:
+            chamado.duracao = None
         chamado.save()
         messages.success(request, f"✅ Chamado {pk} finalizado!")
 
@@ -341,9 +345,12 @@ def gerar_grafico_bar(df, coluna, titulo):
         bars = ax.barh(df_count.index, df_count.values, color=sns.color_palette("Set2", len(df_count)))
         ax.set_xlabel("Quantidade")
         ax.set_title(titulo, fontsize=13, weight="bold")
+
+        ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
+
         for bar in bars:
             width = bar.get_width()
-            ax.text(width + 0.5, bar.get_y() + bar.get_height()/2, str(int(width)), va='center')
+            ax.text(width + 0, bar.get_y() + bar.get_height()/2, str(int(width)), va='center')
         plt.tight_layout()
         return imagem_para_base64(fig)
     return None
@@ -415,9 +422,14 @@ def dashboard_view(request):
     if not df.empty:
         df_grafico = df.copy()  # para usar nos gráficos
 
+        df_grafico['motivo_grafico'] = df_grafico.apply(
+            lambda row: row['outro_motivo'] if row['motivo'] == 'OUTRO' and row['outro_motivo'] else row['motivo'],
+            axis=1
+        )
+
         plots['status'] = gerar_grafico_pie(df_grafico, 'status', 'Status dos Chamados')
         plots['lideres'] = gerar_grafico_bar(df_grafico, 'lider', 'Principais Líderes')
-        plots['motivos'] = gerar_grafico_bar(df_grafico, 'motivo', 'Principais Motivos')
+        plots['motivos'] = gerar_grafico_bar(df_grafico, 'motivo_grafico', 'Principais Motivos')
         plots['regionais'] = gerar_grafico_bar(df_grafico, 'regional', 'Chamados por Regional')
 
         if getattr(request.user, 'papel', '') == 'admin':

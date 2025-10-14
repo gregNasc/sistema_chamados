@@ -25,6 +25,7 @@ class Chamado(models.Model):
     loja = models.CharField(max_length=100)
     lider = models.CharField(max_length=100)
     motivo = models.CharField(max_length=200)
+    outro_motivo = models.CharField(max_length=200, null=True, blank=True)
     abertura = models.DateTimeField(default=timezone.now)
     fechamento = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Aberto')
