@@ -474,6 +474,12 @@ def upload_excel(request):
                 data_valor = row['DATA'] if 'DATA' in df.columns else None
                 if pd.isna(data_valor):
                     data_valor = None
+                else:
+                    try:
+                        data_valor = pd.to_datetime(data_valor).date()
+                    except Exception:
+                        data_valor = None  # se a data não for válida, ignora
+
                 InventarioExcel.objects.create(
                     loja=row['LOJA'],
                     regional=row['REGIONAL'],
