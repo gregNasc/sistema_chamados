@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block content %}
 <h1 class="text-2xl font-bold mb-6">📂 Todos os Chamados</h1>
@@ -19,6 +20,7 @@
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Abertura</th>
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Status</th>
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Usuário</th>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Duração</th>
                         <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Observação</th>
                     </tr>
                 </thead>
@@ -29,33 +31,31 @@
                         <td class="px-4 py-2">{{ chamado.loja }}</td>
                         <td class="px-4 py-2">{{ chamado.lider }}</td>
                         <td class="px-6 py-3">
-                              {% if chamado.motivo == "OUTRO" and chamado.outro_motivo %}
-                              {{ chamado.motivo }}: {{ chamado.outro_motivo }}
+                            {% if chamado.motivo == "OUTRO" and chamado.outro_motivo %}
+                                {{ chamado.motivo }}: {{ chamado.outro_motivo }}
                             {% else %}
-                              {{ chamado.motivo }}
+                                {{ chamado.motivo }}
                             {% endif %}
                         </td>
                         <td class="px-4 py-2">{{ chamado.abertura|date:"d/m/Y H:i" }}</td>
                         <td class="px-4 py-2">
                             <span class="
                                 px-2 py-1 rounded-full text-xs font-semibold
-                                {% if chamado.status == 'aberto' %}bg-green-100 text-green-800{% endif %}
-                                {% if chamado.status == 'em andamento' %}bg-yellow-100 text-yellow-800{% endif %}
-                                {% if chamado.status == 'finalizado' %}bg-gray-100 text-gray-700{% endif %}
+                                {% if chamado.status == 'Aberto' %}bg-green-100 text-green-800{% endif %}
+                                {% if chamado.status == 'Finalizado' %}bg-gray-100 text-gray-700{% endif %}
                             ">
                                 {{ chamado.status|capfirst }}
                             </span>
                         </td>
                         <td class="px-4 py-2">{{ chamado.usuario }}</td>
+                        <td class="px-4 py-2">{{ chamado.duracao|format_duracao }}</td>
                         <td class="px-4 py-2">
-                            <div class="max-h-[60px] overflow-y-auto">
-                                {{ chamado.observacao|default_if_none:"" }}
-                            </div>
+                            <div class="max-h-[60px] overflow-y-auto">{{ chamado.observacao|default_if_none:"" }}</div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="px-4 py-6 text-center text-gray-500">
+                        <td colspan="9" class="px-4 py-6 text-center text-gray-500">
                             ⚠️ Nenhum chamado encontrado.
                         </td>
                     </tr>
@@ -68,12 +68,14 @@
 
 <!-- Paginação -->
 <div class="mt-4 flex justify-end gap-2">
-    {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200">« Anterior</a>
-    {% endif %}
-    <span class="px-3 py-1">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200">Próxima »</a>
+    {% if page_obj %}
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200">« Anterior</a>
+        {% endif %}
+        <span class="px-3 py-1">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200">Próxima »</a>
+        {% endif %}
     {% endif %}
 </div>
 {% endblock %}

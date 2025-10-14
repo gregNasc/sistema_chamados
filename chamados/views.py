@@ -509,11 +509,26 @@ def upload_excel(request):
 def exportar_excel_view(request):
     chamados = Chamado.objects.all().values()
     df = pd.DataFrame(chamados)
+
+    # Converter datetimes
     for col in df.columns:
         if pd.api.types.is_datetime64_any_dtype(df[col]):
             if df[col].dt.tz is not None:
                 df[col] = df[col].dt.tz_localize(None)
             df[col] = df[col].dt.strftime('%d/%m/%Y %H:%M:%S')
+
+    # Formatar duração para "Xh Ymin"
+    if 'duracao' in df.columns:
+        def format_duracao_excel(value):
+            if pd.isnull(value):
+                return ""
+            total_seconds = int(value.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            return f"{hours}h {minutes}min"
+
+        df['duracao'] = df['duracao'].apply(format_duracao_excel)
+
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
