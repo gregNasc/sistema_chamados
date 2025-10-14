@@ -530,3 +530,16 @@ def zerar_banco_view(request):
         messages.success(request, "✅ Todos os chamados foram zerados com sucesso!")
         return redirect('chamados:dashboard')  # Nome da sua view de dashboard atualizado
     return render(request, 'chamados/confirm_zerar.html')
+
+
+from django.http import HttpResponse
+from django.contrib.admin.views.decorators import staff_member_required
+from django.core.management import call_command
+
+@staff_member_required  # garante que só admin consegue acessar
+def run_migrations(request):
+    try:
+        call_command("migrate", interactive=False)
+        return HttpResponse("✅ Migrations executadas com sucesso!")
+    except Exception as e:
+        return HttpResponse(f"❌ Erro ao executar migrations: {e}")

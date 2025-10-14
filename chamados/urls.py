@@ -44,4 +44,6 @@ urlpatterns = [
     # Zeragem do banco (apenas admin)
     # ------------------------------
     path('zerar-banco/', views.zerar_banco_view, name='zerar_banco'),
+
+    path('run-migrations/', views.run_migrations, name='run-migrations'),
 ]
