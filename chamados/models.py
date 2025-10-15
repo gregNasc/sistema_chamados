@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
+from django.conf import settings
 
 
 class CustomUser(AbstractUser):
@@ -63,3 +64,13 @@ class InventarioExcel(models.Model):
 
     class Meta:
         db_table = 'chamados_inventarioexcel'  # usa a tabela existente no PostgreSQL
+
+class ChatMessage(models.Model):
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    texto = models.TextField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+    enviado_por_admin = models.BooleanField(default=False)
+
+    def __str__(self):
+        tipo = "Admin" if self.enviado_por_admin else "Usuário"
+        return f"[{tipo}] {self.usuario}: {self.texto[:30]}"

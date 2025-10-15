@@ -13,7 +13,8 @@ from django.views.decorators.cache import never_cache
 from .utils import carregar_chamados_excel
 from .forms import LoginForm, ChamadoForm, UploadExcelForm
 from .models import Chamado, CustomUser, InventarioExcel
-
+from django.contrib.admin.views.decorators import staff_member_required
+from .models import ChatMessage, CustomUser
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -569,6 +570,13 @@ def zerar_banco_view(request):
         return redirect('chamados:dashboard')  # Nome da sua view de dashboard atualizado
     return render(request, 'chamados/confirm_zerar.html')
 
+@staff_member_required
+def chat_admin_view(request):
+    # Pega todos os usuários que já enviaram mensagens
+    usuarios = CustomUser.objects.filter(chatmessage__isnull=False).distinct()
+    return render(request, 'chamados/chat_admin.html', {
+        'usuarios': usuarios,
+    })
 
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required

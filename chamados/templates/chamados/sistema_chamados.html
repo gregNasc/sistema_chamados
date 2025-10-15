@@ -4,6 +4,26 @@
 {% block content %}
 <h1 class="text-2xl font-bold mb-6 text-gray-800">📋 Sistema de Chamados</h1>
 
+<!-- ALERTA DE MENSAGEM -->
+{% if messages %}
+<div id="mensagem-alerta" class="p-2 mb-4 rounded bg-green-100 text-green-800">
+    {% for message in messages %}
+        {{ message }}
+    {% endfor %}
+</div>
+<script>
+  // Faz a mensagem sumir após 3 segundos
+  setTimeout(() => {
+    const alerta = document.getElementById('mensagem-alerta');
+    if(alerta) alerta.remove();
+  }, 3000);
+
+  // Limpa o formulário
+  const formChamado = document.getElementById('form-chamado');
+  if(formChamado) formChamado.reset();
+</script>
+{% endif %}
+
 <!-- Filtro por data -->
 <form method="get" id="form-filtro" class="flex items-center gap-3 mb-6">
     <label for="data" class="text-sm font-medium">Filtrar por Data:</label>
@@ -83,6 +103,40 @@
         💾 Salvar Chamado
     </button>
 </form>
+
+<!-- BOTÃO FLUTUANTE DO CHAT -->
+<button id="abrir-chat"
+        class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition z-50">
+    💬
+</button>
+
+<!-- MODAL DO CHAT -->
+<div id="chat-modal"
+     class="fixed inset-0 bg-black bg-opacity-40 flex items-end justify-end hidden z-50">
+    <div class="bg-white w-80 h-96 rounded-t-2xl shadow-lg flex flex-col p-3 m-4 relative">
+
+        <!-- Cabeçalho -->
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
+            <h3 class="font-semibold text-gray-700">💬 Suporte</h3>
+            <button id="fechar-chat" class="text-gray-400 hover:text-gray-600">✖</button>
+        </div>
+
+        <!-- Mensagens -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50"></div>
+
+        <!-- Campo de envio -->
+        <div class="flex gap-2">
+            <input type="text" id="chat-input"
+                   class="border flex-1 p-2 rounded focus:ring focus:ring-blue-300 text-sm"
+                   placeholder="Digite sua mensagem...">
+            <button id="chat-send"
+                    class="bg-blue-500 text-white px-3 rounded hover:bg-blue-600 transition">
+                ➤
+            </button>
+        </div>
+
+    </div>
+</div>
 
 <!-- Lista de chamados -->
 <h2 class="text-xl font-semibold mt-10 mb-4 text-gray-700">📂 Chamados Abertos</h2>
@@ -182,7 +236,6 @@ function inicializarFormulario() {
     const todosMotivos = motivosFixos.concat(motivosDB);
     const motivoSelect = document.getElementById('motivo');
 
-    // Popula corretamente mesmo após voltar de outra aba
     motivoSelect.innerHTML = '';
     todosMotivos.forEach(m => {
         const option = document.createElement('option');
@@ -200,7 +253,6 @@ function inicializarFormulario() {
     });
 }
 
-// Inicializa no carregamento normal
 window.addEventListener('DOMContentLoaded', () => {
     inicializarFormulario();
 
@@ -213,16 +265,12 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Inicializa também ao restaurar do bfcache sem resetar o formulário
 window.addEventListener('pageshow', (event) => {
     if (event.persisted) {
         inicializarFormulario();
-        // mantém todos os valores previamente preenchidos, sem reset
     }
 });
-</script>
 
-<script>
 $(function(){
     function atualizarLojas(selecionarValor=false) {
         let data = $('#data').val();
@@ -272,5 +320,49 @@ function toggleObservacao(select){
     if(select.value === 'Sim') $('#observacao').show();
     else $('#observacao').hide().val('');
 }
+
+// CHAT
+document.addEventListener('DOMContentLoaded', function() {
+    const usuarioId = "{{ request.user.id }}";
+    const chatModal = document.getElementById('chat-modal');
+    const abrirChatBtn = document.getElementById('abrir-chat');
+    const fecharChatBtn = document.getElementById('fechar-chat');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
+
+    abrirChatBtn.addEventListener('click', () => chatModal.classList.remove('hidden'));
+    fecharChatBtn.addEventListener('click', () => chatModal.classList.add('hidden'));
+    chatModal.addEventListener('click', e => { if (e.target === chatModal) chatModal.classList.add('hidden'); });
+
+    const ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const chatSocket = new WebSocket(`${ws_scheme}://${window.location.host}/ws/chat/${usuarioId}/`);
+
+    chatSocket.onopen = () => console.log("✅ Conectado ao WebSocket");
+    chatSocket.onerror = err => console.error("❌ Erro no WebSocket:", err);
+
+    chatSocket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        const mensagemEl = document.createElement('div');
+        mensagemEl.textContent = (data.admin ? "Admin: " : "Você: ") + data.mensagem;
+        mensagemEl.classList.add("mb-1", "text-sm", data.admin ? "text-red-600" : "text-gray-800");
+        chatMessages.appendChild(mensagemEl);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    function enviarMensagem() {
+        const mensagem = chatInput.value.trim();
+        if (mensagem) {
+            chatSocket.send(JSON.stringify({'mensagem': mensagem, 'admin': false}));
+            chatInput.value = '';
+        }
+    }
+
+    chatSend.addEventListener('click', enviarMensagem);
+    chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') enviarMensagem();
+    });
+});
 </script>
+
 {% endblock %}

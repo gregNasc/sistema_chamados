@@ -31,7 +31,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'chamados.apps.ChamadosConfig',  # app principal
+    'chamados.apps.ChamadosConfig',
+    'channels',
 ]
 
 # ------------------------------
@@ -76,7 +77,13 @@ TEMPLATES = [
 # WSGI
 # ------------------------------
 WSGI_APPLICATION = 'sistema_chamados.wsgi.application'
+ASGI_APPLICATION = 'sistema_chamados.asgi.application'
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    },
+}
 # ------------------------------
 # AUTENTICAÇÃO CUSTOMIZADA
 # ------------------------------
