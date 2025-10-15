@@ -193,31 +193,54 @@ def sistema_chamados_view(request):
 
 @login_required
 def chamados_ativos(request):
-    #  Filtra chamados abertos
-    chamados = Chamado.objects.filter(status='Aberto')
-
-    #  Pega data do GET
     data_str = request.GET.get('data')
+    data_filtro = None
     if data_str:
         try:
             data_filtro = datetime.strptime(data_str, "%Y-%m-%d").date()
-            chamados = chamados.filter(abertura__date=data_filtro)  # chama pelo campo abertura
         except ValueError:
             pass
 
-    chamados = chamados.order_by('-abertura')
-
-    #  Opcional: carregar dados de InventarioExcel para filtros dinâmicos (sidebar, selects)
+    # --- Carrega inventário para os filtros dinâmicos ---
     inventario_qs = InventarioExcel.objects.all()
-    if data_str:
-        try:
-            inventario_qs = inventario_qs.filter(data=data_filtro)
-        except:
-            pass
+    if data_filtro:
+        inventario_qs = inventario_qs.filter(data=data_filtro)
 
-    #  Choices dinâmicos para filtros (opcional)
     regionais = sorted(inventario_qs.values_list('regional', flat=True).distinct())
     lideres = sorted(inventario_qs.values_list('lider', flat=True).distinct())
+    lojas = sorted(inventario_qs.values_list('loja', flat=True).distinct())
+
+    motivos_db = Chamado.objects.values_list('motivo', flat=True).distinct()
+
+    # --- Cadastro de novo chamado ---
+    if request.method == "POST":
+        form = ChamadoForm(
+            request.POST,
+            regionais=regionais,
+            lojas=lojas,
+            lideres=lideres,
+            motivos_db=motivos_db
+        )
+
+        if form.is_valid():
+            chamado = form.save(commit=False)
+            chamado.status = 'Aberto'
+            chamado.abertura = timezone.now()
+            chamado.usuario = request.user
+            chamado.save()
+
+            messages.success(request, "Chamado cadastrado com sucesso!")
+            return redirect('chamados:chamados_ativos')
+        else:
+            print("ERROS DO FORM:", form.errors)
+            messages.warning(request, "Erro ao cadastrar chamado. Verifique os campos.")
+
+    # --- Lista de chamados abertos ---
+    chamados = Chamado.objects.filter(status='Aberto')
+    if data_filtro:
+        chamados = chamados.filter(abertura__date=data_filtro)
+
+    chamados = chamados.order_by('-abertura')
 
     return render(request, 'chamados/sistema_chamados.html', {
         'chamados': chamados,

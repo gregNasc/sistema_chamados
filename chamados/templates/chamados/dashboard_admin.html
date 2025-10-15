@@ -5,73 +5,124 @@
 {% block content %}
 <h1 class="text-2xl font-bold mb-6">📊 Dashboard de Chamados</h1>
 
+<!-- AlpineJS -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
+
 <!-- Grid de gráficos -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="grid grid-cols-2 md:grid-cols-2 gap-6">
     {% if plots %}
-        <!-- Linha 1 -->
+        <!-- STATUS -->
         {% if plots.status %}
-        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+        <div x-data="{ open: false }" class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
             <h3 class="text-lg font-semibold mb-4">📌 Status</h3>
-            <img src="data:image/png;base64,{{ plots.status }}" alt="Status" class="mx-auto rounded-md">
+
+            <img src="data:image/png;base64,{{ plots.status }}"
+                 class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
+                 @click="open = true">
+
+            <!-- Modal -->
+            <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
+                <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
+                <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
+                    <img src="data:image/png;base64,{{ plots.status }}" class="max-w-full max-h-screen object-contain">
+                    <button @click="open = false"
+                            class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                        Fechar
+                    </button>
+                </div>
+            </div>
         </div>
         {% endif %}
 
+        <!-- REGIONAIS -->
         {% if plots.regionais %}
-        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+        <div x-data="{ open: false }" class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
             <h3 class="text-lg font-semibold mb-4">📊 Chamados por Regional</h3>
-            <img src="data:image/png;base64,{{ plots.regionais }}" alt="Regionais" class="mx-auto rounded-md">
+
+            <img src="data:image/png;base64,{{ plots.regionais }}"
+                 class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
+                 @click="open = true">
+
+            <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
+                <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
+                <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
+                    <img src="data:image/png;base64,{{ plots.regionais }}" class="max-w-full max-h-screen object-contain">
+                    <button @click="open = false"
+                            class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                        Fechar
+                    </button>
+                </div>
+            </div>
         </div>
         {% endif %}
 
+        <!-- LÍDERES -->
         {% if plots.lideres %}
-        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+        <div x-data="{ open: false }" class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
             <h3 class="text-lg font-semibold mb-4">👔 Principais Líderes</h3>
-            <img src="data:image/png;base64,{{ plots.lideres }}" alt="Líderes" class="mx-auto rounded-md">
+
+            <img src="data:image/png;base64,{{ plots.lideres }}"
+                 class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
+                 @click="open = true">
+
+            <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
+                <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
+                <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
+                    <img src="data:image/png;base64,{{ plots.lideres }}" class="max-w-full max-h-screen object-contain">
+                    <button @click="open = false"
+                            class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                        Fechar
+                    </button>
+                </div>
+            </div>
         </div>
         {% endif %}
 
-        <!-- Linha 2 -->
+        <!-- MOTIVOS -->
         {% if plots.motivos %}
-        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+        <div x-data="{ open: false }" class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
             <h3 class="text-lg font-semibold mb-4">⚙️ Principais Motivos</h3>
-            <img src="data:image/png;base64,{{ plots.motivos }}" alt="Motivos" class="mx-auto rounded-md">
+
+            <img src="data:image/png;base64,{{ plots.motivos }}"
+                 class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
+                 @click="open = true">
+
+            <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
+                <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
+                <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
+                    <img src="data:image/png;base64,{{ plots.motivos }}" class="max-w-full max-h-screen object-contain">
+                    <button @click="open = false"
+                            class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                        Fechar
+                    </button>
+                </div>
+            </div>
         </div>
         {% endif %}
 
+        <!-- TEMPO MÉDIO -->
         {% if plots.tempo_medio %}
-     <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition
-                    md:col-start-2 md:col-span-2">
-<div x-data="{ open: false }" class="text-center">
-    <h3 class="text-lg font-semibold mb-4">⏱️ Tempo Médio</h3>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
+        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition md:col-start-2 md:col-span-2">
+            <div x-data="{ open: false }" class="text-center">
+                <h3 class="text-lg font-semibold mb-4">⏱️ Tempo Médio</h3>
 
-    <!-- Miniatura clicável -->
-    <img src="data:image/png;base64,{{ plots.tempo_medio }}"
-         class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
-         @click="open = true">
+                <img src="data:image/png;base64,{{ plots.tempo_medio }}"
+                     class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
+                     @click="open = true">
 
-    <!-- Modal -->
-    <div x-show="open"
-         x-transition.opacity
-         class="fixed inset-0 flex items-center justify-center z-50">
-
-        <!-- Fundo clicável -->
-        <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
-
-        <!-- Conteúdo -->
-        <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
-            <img src="data:image/png;base64,{{ plots.tempo_medio }}"
-                 class="max-w-full max-h-screen object-contain">
-            <button @click="open = false"
-                    class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                Fechar
-            </button>
+                <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
+                    <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
+                        <img src="data:image/png;base64,{{ plots.tempo_medio }}" class="max-w-full max-h-screen object-contain">
+                        <button @click="open = false"
+                                class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
-
         {% endif %}
-
     {% else %}
         <div class="bg-gray-100 text-gray-500 rounded-xl p-8 text-center col-span-full">
             ⚠️ Nenhum dado disponível para exibir gráficos.
