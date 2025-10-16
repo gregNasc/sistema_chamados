@@ -297,7 +297,6 @@ def regionais_por_data(request):
     regionais = sorted(inventario_qs.values_list('regional', flat=True).distinct())
     return JsonResponse({'regionais': regionais})
 
-
 def lojas_por_regional(request):
     """Retorna lojas de uma regional específica (InventarioExcel)"""
     regional = request.GET.get('regional')
@@ -316,7 +315,6 @@ def lojas_por_regional(request):
 
     lojas = sorted(inventario_qs.values_list('loja', flat=True).distinct())
     return JsonResponse({'lojas': lojas})
-
 
 def lider_por_loja(request):
     """Retorna o líder da loja selecionada (InventarioExcel)"""
@@ -390,7 +388,7 @@ def gerar_grafico_tempo_medio(df, titulo="Tempo Médio de Suporte"):
     df_finalizados['abertura'] = pd.to_datetime(df_finalizados['abertura'])
     df_finalizados['fechamento'] = pd.to_datetime(df_finalizados['fechamento'])
 
-    # 🔹 Calcula tempo em minutos
+    #  Calcula tempo em minutos
     df_finalizados['tempo_minutos'] = (df_finalizados['fechamento'] - df_finalizados['abertura']).dt.total_seconds() / 60
 
     df_medio = df_finalizados.groupby('motivo')['tempo_minutos'].mean().sort_values()
