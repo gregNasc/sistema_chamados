@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-5xl mx-auto bg-white p-6 rounded-2xl shadow-lg">
+    <h2 class="text-2xl font-bold mb-4">👥 Gerenciar Usuários</h2>
+
+    <div class="mb-4 flex justify-end">
+        <a href="{% url 'chamados:cadastrar_usuario' %}" 
+           class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+           ➕ Novo Usuário
+        </a>
+    </div>
+
+    <table class="w-full border-collapse">
+        <thead>
+            <tr class="bg-gray-100 text-left">
+                <th class="px-3 py-2 border-b">Usuário</th>
+                <th class="px-3 py-2 border-b">Nome</th>
+                <th class="px-3 py-2 border-b">E-mail</th>
+                <th class="px-3 py-2 border-b">Papel</th>
+                <th class="px-3 py-2 border-b text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for u in usuarios %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-3 py-2 border-b">{{ u.username }}</td>
+                <td class="px-3 py-2 border-b">{{ u.first_name }}</td>
+                <td class="px-3 py-2 border-b">{{ u.email }}</td>
+                <td class="px-3 py-2 border-b">
+                    {% if u.papel == 'admin' %}
+                        <span class="text-red-600 font-semibold">Administrador</span>
+                    {% elif u.papel == 'gestor' %}
+                        <span class="text-blue-600 font-semibold">Gestor</span>
+                    {% else %}
+                        <span class="text-gray-600">Usuário</span>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-2 border-b text-center">
+                    <a href="{% url 'chamados:editar_usuario' u.id %}" class="text-blue-600 hover:underline">✏️ Editar</a> |
+                    <a href="{% url 'chamados:excluir_usuario' u.id %}" class="text-red-600 hover:underline"
+                       onclick="return confirm('Tem certeza que deseja excluir este usuário?')">🗑️ Excluir</a>
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="5" class="text-center text-gray-500 py-4">Nenhum usuário encontrado.</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

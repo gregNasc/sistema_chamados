@@ -12,13 +12,11 @@
     {% endfor %}
 </div>
 <script>
-  // Faz a mensagem sumir após 3 segundos
   setTimeout(() => {
     const alerta = document.getElementById('mensagem-alerta');
     if(alerta) alerta.remove();
   }, 3000);
 
-  // Limpa o formulário
   const formChamado = document.getElementById('form-chamado');
   if(formChamado) formChamado.reset();
 </script>
@@ -106,7 +104,7 @@
 
 <!-- BOTÃO FLUTUANTE DO CHAT -->
 <button id="abrir-chat"
-        class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition z-50">
+         class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 hover:scale-110 transition transform z- animate-bounce">
     💬
 </button>
 
@@ -114,7 +112,7 @@
 <div id="chat-modal"
      class="fixed inset-0 bg-black bg-opacity-40 flex items-end justify-end hidden z-50">
     <div class="bg-white w-80 h-96 rounded-t-2xl shadow-lg flex flex-col p-3 m-4 relative">
-
+    <div id="chat-alerts" class="fixed top-6 right-6 w-80 z-50 space-y-2"></div>
         <!-- Cabeçalho -->
         <div class="flex justify-between items-center border-b pb-2 mb-2">
             <h3 class="font-semibold text-gray-700">💬 Suporte</h3>
@@ -137,7 +135,11 @@
 
     </div>
 </div>
-
+<div class="usuarios-disponiveis">
+    {% for user in usuarios %}
+    <button class="abrir-chat-usuario" data-username="{{ user.username }}">Chat com {{ user.get_full_name|default:user.username }}</button>
+{% endfor %}
+</div>
 <!-- Lista de chamados -->
 <h2 class="text-xl font-semibold mt-10 mb-4 text-gray-700">📂 Chamados Abertos</h2>
 
@@ -212,8 +214,14 @@
     </div>
 </div>
 
+<div id="chat-info"
+     data-user-id="{{ request.user.id }}"
+     data-user-nome="{{ request.user.get_full_name|default:request.user.username }}">
+</div>
+
 <!-- SCRIPTS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{% static 'chamados/scripts.js' %}"></script>
 
 <script>
 function inicializarFormulario() {
@@ -223,7 +231,7 @@ function inicializarFormulario() {
         'IMPRESSORA QUEIMADA',
         'ROUTER NÃO FUNCIONA',
         'NOTEBOOK NÃO LIGA',
-        'COLETOR NA CONECTA NA REDE',
+        'COLETOR NÃO CONECTA NA REDE',
         'OUTRO'
     ];
 
@@ -321,9 +329,12 @@ function toggleObservacao(select){
     else $('#observacao').hide().val('');
 }
 
-// CHAT
+// ------------------------
+// CHAT USUÁRIO
+// ------------------------
 document.addEventListener('DOMContentLoaded', function() {
-    const usuarioId = "{{ request.user.id }}";
+    const usuarioId = "{{ request.user.id }}"; // ID do usuário logado
+    const usuarioNome = "{{ request.user.get_full_name|default:request.user.username }}";
     const chatModal = document.getElementById('chat-modal');
     const abrirChatBtn = document.getElementById('abrir-chat');
     const fecharChatBtn = document.getElementById('fechar-chat');
@@ -333,36 +344,222 @@ document.addEventListener('DOMContentLoaded', function() {
 
     abrirChatBtn.addEventListener('click', () => chatModal.classList.remove('hidden'));
     fecharChatBtn.addEventListener('click', () => chatModal.classList.add('hidden'));
-    chatModal.addEventListener('click', e => { if (e.target === chatModal) chatModal.classList.add('hidden'); });
+    chatModal.addEventListener('click', e => {
+        if(e.target === chatModal) chatModal.classList.add('hidden');
+    });
 
-    const ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
-    const chatSocket = new WebSocket(`${ws_scheme}://${window.location.host}/ws/chat/${usuarioId}/`);
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const chatSocket = new WebSocket(wsScheme + '://' + window.location.host + '/ws/chat/{{ request.user.username }}/');
 
-    chatSocket.onopen = () => console.log("✅ Conectado ao WebSocket");
-    chatSocket.onerror = err => console.error("❌ Erro no WebSocket:", err);
+    chatSocket.onopen = () => console.log("✅ Usuário conectado ao WebSocket");
+    chatSocket.onerror = err => console.error("❌ Erro WebSocket usuário:", err);
 
-    chatSocket.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        const mensagemEl = document.createElement('div');
-        mensagemEl.textContent = (data.admin ? "Admin: " : "Você: ") + data.mensagem;
-        mensagemEl.classList.add("mb-1", "text-sm", data.admin ? "text-red-600" : "text-gray-800");
-        chatMessages.appendChild(mensagemEl);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    };
+chatSocket.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    const msgEl = document.createElement('div');
 
-    function enviarMensagem() {
-        const mensagem = chatInput.value.trim();
-        if (mensagem) {
-            chatSocket.send(JSON.stringify({'mensagem': mensagem, 'admin': false}));
-            chatInput.value = '';
+    if (data.admin === true) {
+        // Mensagem do admin
+        msgEl.textContent = `${data.remetente}: ${data.mensagem}`;
+        msgEl.className = "mb-1 text-sm text-blue-600";
+    } else {
+        // Mensagem do próprio usuário
+        if (data.usuario_nome === usuarioNome) {
+            msgEl.textContent = `${data.usuario_nome}: ${data.mensagem}`;
+            msgEl.className = "mb-1 text-sm text-gray-800 text-right";
+        } else {
+            // Mensagem de outro usuário (não aplicável) ou alert
+            msgEl.textContent = `${data.remetente || data.usuario_nome || 'Usuário'}: ${data.mensagem}`;
+            msgEl.className = "mb-1 text-sm text-gray-700";
+        }
+
+        // Alerta apenas se for de outro usuário/admin
+        if (data.alert && data.usuario_nome !== usuarioNome) {
+            alert(`Nova mensagem de ${data.usuario_nome}!`);
         }
     }
 
-    chatSend.addEventListener('click', enviarMensagem);
-    chatInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') enviarMensagem();
-    });
+    chatMessages.appendChild(msgEl);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+};
+
+    function enviarMensagemUsuario() {
+        const mensagem = chatInput.value.trim();
+        if(!mensagem) return;
+
+        chatSocket.send(JSON.stringify({mensagem, admin: false}));
+        chatInput.value = '';
+    }
+
+    chatSend.addEventListener('click', enviarMensagemUsuario);
+    chatInput.addEventListener('keypress', e => { if(e.key === 'Enter') enviarMensagemUsuario(); });
+});
+
+</script>
+
+{% if request.user.is_staff %}
+<script>
+// ------------------------
+// CHAT ADMIN
+// ------------------------
+document.addEventListener('DOMContentLoaded', function() {
+    const usuarioNome = "{{ request.user.get_full_name|default:request.user.username }}";
+    const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
+    const chatModal = document.getElementById('chat-modal');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+
+    let chatSocket = null;
+    let usuarioAtivo = null;
+
+    // Container de alertas
+    let alertContainer = document.getElementById('chat-alerts');
+    if(isAdmin && !alertContainer){
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'chat-alerts';
+        alertContainer.className = 'fixed top-6 right-6 z-50 flex flex-col gap-2';
+        document.body.appendChild(alertContainer);
+    }
+
+    function criarAlerta(msg){
+        if(!isAdmin) return;
+        const alertEl = document.createElement('div');
+        alertEl.textContent = msg;
+        alertEl.className = "p-2 bg-yellow-200 border border-yellow-400 rounded shadow text-sm";
+        alertContainer.appendChild(alertEl);
+        setTimeout(() => alertEl.remove(), 5000);
+    }
+
+    // ------------------------
+    // Função de conexão ao chat
+    // ------------------------
+function entrarNoChat(usuario) {
+    console.log("Chamando entrarNoChat com usuario:", usuario);
+    if (!usuario || typeof usuario !== "string" || usuario.trim() === "") {
+        console.error("⚠️ Usuário inválido para entrar no chat:", usuario);
+        return;
+    }
+    usuarioAtivo = usuario;
+    if (chatSocket) {
+        chatSocket.close();
+    }
+    chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${usuarioAtivo}/`);
+
+    chatSocket.onopen = () => console.log(`✅ Conectado ao chat de ${usuarioAtivo}`);
+    chatSocket.onerror = err => console.error("❌ Erro WebSocket:", err);
+
+    chatSocket.onmessage = function(event) {
+        console.log("Mensagem recebida do WS:", event.data);
+        const data = JSON.parse(event.data);
+        const msgEl = document.createElement('div');
+        const remetente = data.remetente || (data.admin ? "Admin" : data.usuario_nome || "Usuário");
+
+        if (isAdmin) {
+            // Fluxo admin: Mostrar todas as mensagens, sem filtrar próprias
+            msgEl.textContent = `${remetente}: ${data.mensagem}`;
+            msgEl.className = data.admin ? "mb-1 text-sm text-blue-600" : "mb-1 text-sm text-gray-800";
+            if (data.alert && usuarioAtivo !== data.usuario_nome) {
+                criarAlerta(`Nova mensagem de ${data.usuario_nome}!`);
+            }
+        } else {
+            // Fluxo usuário
+            if (data.admin === true) {
+                msgEl.textContent = `${remetente}: ${data.mensagem}`;
+                msgEl.className = "mb-1 text-sm text-blue-600";
+            } else if (data.usuario_nome === usuarioNome) {
+                msgEl.textContent = `${data.usuario_nome}: ${data.mensagem}`;
+                msgEl.className = "mb-1 text-sm text-gray-800 text-right";
+            } else {
+                msgEl.textContent = `${remetente}: ${data.mensagem}`;
+                msgEl.className = "mb-1 text-sm text-gray-700";
+            }
+            if (data.alert && data.admin) { // Alert para mensagens de admin
+                alert(`Nova mensagem de ${remetente}!`);
+            }
+        }
+
+        if (chatMessages) {
+            chatMessages.appendChild(msgEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    };
+
+    if (chatMessages) {
+        chatMessages.innerHTML = '';
+    }
+}
+
+    // Tornar a função global (opcional) para testes no console
+    window.entrarNoChat = entrarNoChat;
+
+    // ------------------------
+    // Envio de mensagens
+    // ------------------------
+    function enviarMensagemAdmin() {
+                if (!chatSocket) return;
+        if (!usuarioAtivo) {
+            alert("Selecione um usuário para enviar mensagem.");
+            return;
+        }
+        const texto = chatInput.value.trim();
+        if (!texto) return;
+
+        const payload = {
+            mensagem: texto,
+            admin: true,
+            destinatario_username: usuarioAtivo
+        };
+
+        chatSocket.send(JSON.stringify(payload));
+        chatInput.value = '';
+    }
+
+}
+
+     chatSend?.addEventListener('click', enviarMensagemAdmin);
+    chatInput?.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensagemAdmin(); });
+
+
+    // ------------------------
+    // Fluxo do admin
+    // ------------------------
+    if(isAdmin){
+        // Botões de usuários online
+        document.querySelectorAll('.abrir-chat-usuario').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const usuario = this.dataset.username;
+                entrarNoChat(usuario);
+                chatModal.classList.remove('hidden');
+            });
+        });
+
+        document.getElementById('fechar-chat')?.addEventListener('click', () => chatModal.classList.add('hidden'));
+        chatModal?.addEventListener('click', e => { if(e.target === chatModal) chatModal.classList.add('hidden'); });
+
+    } else {
+        // ------------------------
+        // Fluxo do usuário normal
+        // ------------------------
+        usuarioAtivo = usuarioNome;
+        chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${usuarioAtivo}/`);
+
+        chatSocket.onmessage = function(event) {
+            console.log("Mensagem recebida do WS:", event.data);
+            const data = JSON.parse(event.data);
+            const msgEl = document.createElement('div');
+            msgEl.textContent = `${data.remetente}: ${data.mensagem}`;
+            msgEl.className = "mb-1 text-sm text-gray-800";
+            if(chatMessages){
+                chatMessages.appendChild(msgEl);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        };
+    }
 });
 </script>
+
+{% endif %}
 
 {% endblock %}

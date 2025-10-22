@@ -46,7 +46,7 @@ class ChamadoForm(forms.ModelForm):
             ('IMPRESSORA QUEIMADA', 'IMPRESSORA QUEIMADA'),
             ('ROUTER NÃO FUNCIONA', 'ROUTER NÃO FUNCIONA'),
             ('NOTEBOOK NÃO LIGA', 'NOTEBOOK NÃO LIGA'),
-            ('COLETOR NA CONECTA NA REDE', 'COLETOR NA CONECTA NA REDE'),
+            ('COLETOR NÃO CONECTA NA REDE', 'COLETOR NÃO CONECTA NA REDE'),
             ('OUTRO', 'OUTRO')
         ]
         motivos_completos = motivos_fixos + [(m, m) for m in motivos_db if m not in dict(motivos_fixos)]

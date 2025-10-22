@@ -21,7 +21,10 @@ urlpatterns = [
     path('ativos/', views.chamados_ativos, name='chamados_ativos'),
     path('finalizar/<int:pk>/', views.finalizar_chamado_view, name='finalizar_chamado'),
     path('todos/', views.todos_chamados, name='todos_chamados'),
-
+    path('usuarios/', views.gerenciar_usuarios, name='gerenciar_usuarios'),
+    path('usuarios/cadastrar/', views.cadastrar_usuario, name='cadastrar_usuario'),
+    path('usuarios/<int:user_id>/editar/', views.editar_usuario, name='editar_usuario'),
+    path('usuarios/<int:user_id>/excluir/', views.excluir_usuario, name='excluir_usuario'),
     # ------------------------------
     # Endpoints AJAX
     # ------------------------------

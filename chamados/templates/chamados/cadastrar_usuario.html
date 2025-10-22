@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-lg mx-auto bg-white shadow-lg rounded-2xl p-6">
+    <h2 class="text-2xl font-bold mb-4 text-gray-800">👤 Cadastrar Novo Usuário</h2>
+
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        
+        <!-- Nome de usuário -->
+        <div>
+            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
+            <input type="text" id="username" name="username" required
+                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        </div>
+
+        <!-- Nome completo -->
+        <div>
+            <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">Nome completo</label>
+            <input type="text" id="first_name" name="first_name"
+                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        </div>
+
+        <!-- E-mail -->
+        <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+            <input type="email" id="email" name="email"
+                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        </div>
+
+        <!-- Senha -->
+        <div>
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <input type="password" id="password" name="password" required
+                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        </div>
+
+        <!-- Tipo de perfil -->
+        {% if user.papel == 'admin' %}
+        <div>
+            <label for="papel" class="block text-sm font-medium text-gray-700 mb-1">Perfil</label>
+            <select id="papel" name="papel"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+                <option value="usuario">Usuário</option>
+                <option value="gestor">Gestor</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        {% else %}
+        <!-- Gestores só podem criar usuários -->
+        <input type="hidden" name="papel" value="usuario">
+        {% endif %}
+
+        <!-- Botão -->
+        <div class="pt-4">
+            <button type="submit"
+                    class="w-full bg-blue-600 text-white py-2 rounded-md font-semibold hover:bg-blue-700 transition">
+                ➕ Criar Usuário
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if messages %}
+<div class="mt-6 max-w-lg mx-auto">
+    {% for message in messages %}
+        <div class="
+            px-4 py-3 rounded-lg shadow text-sm font-medium mb-2
+            {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}
+            {% if message.tags == 'success' %}bg-green-100 text-green-800{% endif %}
+            {% if message.tags == 'error' %}bg-red-100 text-red-800{% endif %}
+            {% if message.tags == 'info' %}bg-blue-100 text-blue-800{% endif %}">
+            {{ message }}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

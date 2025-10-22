@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-lg mx-auto bg-white shadow-lg rounded-2xl p-6">
+    <h2 class="text-2xl font-bold mb-4 text-gray-800">✏️ Editar Usuário</h2>
+
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <div>
+            <label class="block text-sm font-medium mb-1">Nome</label>
+            <input type="text" name="first_name" value="{{ usuario.first_name }}"
+                   class="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-300">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium mb-1">E-mail</label>
+            <input type="email" name="email" value="{{ usuario.email }}"
+                   class="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-300">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium mb-1">Papel</label>
+            <select name="papel" class="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-300">
+                <option value="usuario" {% if usuario.papel == 'usuario' %}selected{% endif %}>Usuário</option>
+                <option value="gestor" {% if usuario.papel == 'gestor' %}selected{% endif %}>Gestor</option>
+                <option value="admin" {% if usuario.papel == 'admin' %}selected{% endif %}>Administrador</option>
+            </select>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-blue-600 text-white py-2 rounded-md font-semibold hover:bg-blue-700 transition">
+            💾 Salvar Alterações
+        </button>
+    </form>
+</div>
+{% endblock %}

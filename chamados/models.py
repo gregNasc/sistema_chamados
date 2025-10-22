@@ -7,12 +7,13 @@ from django.conf import settings
 class CustomUser(AbstractUser):
     PAPEL_CHOICES = (
         ('admin', 'Administrador'),
+        ('gestor', 'Gestor'),
         ('usuario', 'Usuário'),
     )
     papel = models.CharField(max_length=10, choices=PAPEL_CHOICES, default='usuario')
 
     def __str__(self):
-        return self.username
+        return f"{self.username} ({self.get_papel_display()})"
 
 
 class Chamado(models.Model):

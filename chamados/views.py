@@ -27,6 +27,10 @@ import pandas as pd
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from .forms import ChamadoForm
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from .models import CustomUser
 # ------------------------------
 # Funções auxiliares
 # ------------------------------
@@ -74,8 +78,79 @@ def logout_view(request):
 # ------------------------------
 
 @login_required
+def cadastrar_usuario(request):
+    if request.user.papel not in ['admin', 'gestor']:
+        messages.error(request, "Você não tem permissão para cadastrar usuários.")
+        return redirect('chamados:dashboard')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        first_name = request.POST.get('first_name')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        papel = request.POST.get('papel', 'usuario')
+
+        # Gestores só podem criar usuários comuns
+        if request.user.papel == 'gestor':
+            papel = 'usuario'
+
+        if CustomUser.objects.filter(username=username).exists():
+            messages.warning(request, "Já existe um usuário com este nome.")
+        else:
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                first_name=first_name,
+                password=password,
+                papel=papel
+            )
+            messages.success(request, f"Usuário '{user.username}' criado com sucesso!")
+
+        return redirect('chamados:cadastrar_usuario')
+
+    return render(request, 'chamados/cadastrar_usuario.html')
+
 @login_required
+def gerenciar_usuarios(request):
+    if request.user.papel != 'admin':
+        messages.error(request, "Apenas administradores podem acessar esta página.")
+        return redirect('chamados:dashboard')
+
+    usuarios = CustomUser.objects.all().order_by('papel', 'username')
+    return render(request, 'chamados/gerenciar_usuarios.html', {'usuarios': usuarios})
+
+@login_required
+def editar_usuario(request, user_id):
+    if request.user.papel != 'admin':
+        messages.error(request, "Apenas administradores podem editar usuários.")
+        return redirect('chamados:dashboard')
+
+    usuario = get_object_or_404(CustomUser, id=user_id)
+
+    if request.method == 'POST':
+        usuario.first_name = request.POST.get('first_name')
+        usuario.email = request.POST.get('email')
+        usuario.papel = request.POST.get('papel', usuario.papel)
+        usuario.save()
+        messages.success(request, "Usuário atualizado com sucesso!")
+        return redirect('chamados:gerenciar_usuarios')
+
+    return render(request, 'chamados/editar_usuario.html', {'usuario': usuario})
+
+@login_required
+def excluir_usuario(request, user_id):
+    if request.user.papel != 'admin':
+        messages.error(request, "Apenas administradores podem excluir usuários.")
+        return redirect('chamados:dashboard')
+
+    usuario = get_object_or_404(CustomUser, id=user_id)
+    usuario.delete()
+    messages.success(request, f"Usuário '{usuario.username}' foi removido com sucesso.")
+    return redirect('chamados:gerenciar_usuarios')
+
+@ login_required
 def sistema_chamados_view(request):
+
     # ------------------------------
     # Filtro por data
     # ------------------------------

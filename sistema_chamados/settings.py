@@ -2,7 +2,7 @@ from pathlib import Path
 from decouple import config
 import dj_database_url
 import os
-
+import ssl
 # ------------------------------
 # BASE_DIR
 # ------------------------------
@@ -81,7 +81,7 @@ ASGI_APPLICATION = 'sistema_chamados.asgi.application'
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 # ------------------------------
