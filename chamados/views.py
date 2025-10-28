@@ -694,7 +694,7 @@ def zerar_banco_view(request):
 @staff_member_required
 def chat_admin_view(request):
     print("✅ View: chat_admin_view chamada por", request.user)
-    usuarios = CustomUser.objects.exclude(is_staff=True)  # pega todos os usuários normais
+    usuarios = CustomUser.objects.exclude(is_staff=True).exclude(username='user') # pega todos os usuários normais
     return render(request, 'chamados/sistema_chamados.html', {
         'usuarios': usuarios,
     })

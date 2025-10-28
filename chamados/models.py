@@ -52,7 +52,6 @@ class Chamado(models.Model):
 
         super().save(*args, **kwargs)
 
-
 class InventarioExcel(models.Model):
     loja = models.CharField(max_length=100)
     regional = models.CharField(max_length=100)

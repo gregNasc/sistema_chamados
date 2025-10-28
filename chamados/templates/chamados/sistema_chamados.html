@@ -202,58 +202,68 @@
     </div>
 </div>
 
-
 <!-- BOTÃO FLUTUANTE DO CHAT -->
 <button id="abrir-chat"
-         class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 hover:scale-110 transition transform z- animate-bounce">
+         class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 hover:scale-110 transition transform z-50 animate-bounce">
     💬
 </button>
 
 <!-- MODAL DO CHAT -->
 <div id="chat-modal"
      class="fixed inset-0 bg-black bg-opacity-40 flex items-end justify-end hidden z-50">
-    <div class="bg-white w-80 h-96 rounded-t-2xl shadow-lg flex flex-col p-3 m-4 relative">
-    <div id="chat-alerts" class="fixed top-6 right-6 w-80 z-50 space-y-2"></div>
-        <!-- Cabeçalho -->
-        <div class="flex justify-between items-center border-b pb-2 mb-2">
-            <h3 class="font-semibold text-gray-700">💬 Suporte</h3>
-            <button id="fechar-chat" class="text-gray-400 hover:text-gray-600">✖</button>
-        </div>
+    <div class="bg-white w-96 h-96 rounded-t-2xl shadow-lg flex flex-row p-3 m-4 relative">
 
-        <!-- Mensagens -->
-        <div id="chat-messages" class="flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50"></div>
+        <!-- Lista de usuários (apenas admins) -->
+        {% if request.user.is_staff %}
+          <div class="w-36 border-r pr-2 overflow-y-auto">
+            {% if usuarios %}
+              <ul id="lista-usuarios" class="space-y-1">
+                {% for usuario in usuarios %}
+                  <li>
+                    <button class="abrir-chat-usuario w-full text-left px-2 py-1 rounded hover:bg-blue-100 hover:text-blue-700 transition"
+                            data-username="{{ usuario.username }}">
+                      {{ usuario.get_full_name|default:usuario.username }}
+                    </button>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="text-gray-500 text-sm">Nenhum usuário disponível.</p>
+            {% endif %}
+          </div>
+        {% endif %}
 
-        <!-- Campo de envio -->
-        <div class="flex gap-2">
-            <input type="text" id="chat-input"
-                   class="border flex-1 p-2 rounded focus:ring focus:ring-blue-300 text-sm"
-                   placeholder="Digite sua mensagem...">
-            <button id="chat-send"
-                    class="bg-blue-500 text-white px-3 rounded hover:bg-blue-600 transition">
-                ➤
-            </button>
+        <!-- Área de chat -->
+        <div class="flex-1 flex flex-col ml-2">
+            <div id="chat-alerts" class="fixed top-6 right-6 w-80 z-50 space-y-2"></div>
+
+            <!-- Cabeçalho -->
+            <div class="flex justify-between items-center border-b pb-2 mb-2">
+                <h3 class="font-semibold text-gray-700">💬 Suporte</h3>
+                <button id="fechar-chat" class="text-gray-400 hover:text-gray-600">✖</button>
+            </div>
+
+            <!-- Mensagens -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50"></div>
+
+            <!-- Campo de envio -->
+            <div class="flex gap-2">
+                <input type="text" id="chat-input"
+                       class="border flex-1 p-2 rounded focus:ring focus:ring-blue-300 text-sm"
+                       placeholder="Digite sua mensagem...">
+                <button id="chat-send"
+                        class="bg-blue-500 text-white px-3 rounded hover:bg-blue-600 transition">
+                    ➤
+                </button>
+            </div>
         </div>
 
     </div>
 </div>
-{% if request.user.is_staff %}
-  {% if usuarios %}
-    <ul id="lista-usuarios">
-      {% for usuario in usuarios %}
-        <li>
-          <button class="abrir-chat-usuario" data-username="{{ usuario.username }}">
-            {{ usuario.get_full_name|default:usuario.username }}
-          </button>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p>Nenhum usuário disponível.</p>
-  {% endif %}
-{% endif %}
+
+
 <div id="chat-info"
-     data-user-id="{{ request.user.id }}"
-     data-user-nome="{{ request.user.get_full_name|default:request.user.username }}">
+       data-user-nome="{{ request.user.get_full_name|default:request.user.username }}">
 </div>
 
 <!-- SCRIPTS -->
@@ -447,14 +457,11 @@ function toggleTempoManual(select) {
     }
 </script>
 
-
 <script>
-// ------------------------
-// CHAT USUÁRIO
-// ------------------------
 document.addEventListener('DOMContentLoaded', function() {
-    const usuarioId = "{{ request.user.id }}"; // ID do usuário logado
-    const usuarioNome = "{{ request.user.get_full_name|default:request.user.username }}";
+    const usuarioNome = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
+    const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
+
     const chatModal = document.getElementById('chat-modal');
     const abrirChatBtn = document.getElementById('abrir-chat');
     const fecharChatBtn = document.getElementById('fechar-chat');
@@ -462,162 +469,137 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatInput = document.getElementById('chat-input');
     const chatSend = document.getElementById('chat-send');
 
-    abrirChatBtn.addEventListener('click', () => chatModal.classList.remove('hidden'));
-    fecharChatBtn.addEventListener('click', () => chatModal.classList.add('hidden'));
-    chatModal.addEventListener('click', e => {
-        if(e.target === chatModal) chatModal.classList.add('hidden');
-    });
+    if (abrirChatBtn) abrirChatBtn.addEventListener('click', () => chatModal.classList.remove('hidden'));
+    if (fecharChatBtn) fecharChatBtn.addEventListener('click', () => chatModal.classList.add('hidden'));
+    if (chatModal) chatModal.addEventListener('click', e => { if(e.target === chatModal) chatModal.classList.add('hidden'); });
 
-    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
-    const chatSocket = new WebSocket(wsScheme + '://' + window.location.host + '/ws/chat/{{ request.user.username }}/');
-
-    chatSocket.onopen = () => console.log("✅ Usuário conectado ao WebSocket");
-    chatSocket.onerror = err => console.error("❌ Erro WebSocket usuário:", err);
-
-chatSocket.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    const msgEl = document.createElement('div');
-
-    if (data.admin === true) {
-        // Mensagem do admin
-        msgEl.textContent = `${data.remetente}: ${data.mensagem}`;
-        msgEl.className = "mb-1 text-sm text-blue-600";
-    } else {
-        // Mensagem do próprio usuário
-        if (data.usuario_nome === usuarioNome) {
-            msgEl.textContent = `${data.usuario_nome}: ${data.mensagem}`;
-            msgEl.className = "mb-1 text-sm text-gray-800 text-right";
-        } else {
-            // Mensagem de outro usuário (não aplicável) ou alert
-            msgEl.textContent = `${data.remetente || data.usuario_nome || 'Usuário'}: ${data.mensagem}`;
-            msgEl.className = "mb-1 text-sm text-gray-700";
-        }
-
-        // Alerta apenas se for de outro usuário/admin
-        if (data.alert && data.usuario_nome !== usuarioNome) {
-            alert(`Nova mensagem de ${data.usuario_nome}!`);
+    // 🔔 Solicita permissão para notificações do navegador (apenas uma vez)
+    if (isAdmin && "Notification" in window) {
+        if (Notification.permission === "default") {
+            Notification.requestPermission().then(result => {
+                console.log("Permissão de notificação:", result);
+            });
         }
     }
 
-    chatMessages.appendChild(msgEl);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-};
-
-    function enviarMensagemUsuario() {
-        const mensagem = chatInput.value.trim();
-        if(!mensagem) return;
-
-        chatSocket.send(JSON.stringify({mensagem, admin: false}));
-        chatInput.value = '';
-    }
-
-    chatSend.addEventListener('click', enviarMensagemUsuario);
-    chatInput.addEventListener('keypress', e => { if(e.key === 'Enter') enviarMensagemUsuario(); });
-});
-
-</script>
-
-{% if request.user.is_staff %}
-<script>
-// ------------------------
-// CHAT ADMIN SIMPLIFICADO
-// ------------------------
-document.addEventListener('DOMContentLoaded', function() {
-    const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
-    if(!isAdmin) return; // Só admins entram aqui
-
-    const chatModal = document.getElementById('chat-modal');
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input');
-    const chatSend = document.getElementById('chat-send');
     const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
 
-    let chatSocket = null;
-    let usuarioAtivo = null;
+    if (!window.chatSocket) {
+        window.chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/{{ request.user.username }}/`);
 
-    // Container de alertas visuais
-    let alertContainer = document.getElementById('chat-alerts');
-    if(!alertContainer){
-        alertContainer = document.createElement('div');
-        alertContainer.id = 'chat-alerts';
-        alertContainer.className = 'fixed top-6 right-6 z-50 flex flex-col gap-2';
-        document.body.appendChild(alertContainer);
-    }
+        window.chatSocket.onopen = () => console.log(`✅ ${isAdmin ? "Admin" : "Usuário"} conectado ao WebSocket`);
+        window.chatSocket.onerror = err => console.error("❌ Erro WebSocket:", err);
 
-    function criarAlerta(msg){
-        const alertEl = document.createElement('div');
-        alertEl.textContent = msg;
-        alertEl.className = "p-2 bg-yellow-200 border border-yellow-400 rounded shadow text-sm";
-        alertContainer.appendChild(alertEl);
-        console.log("🔔 Alerta:", msg);
-        setTimeout(() => alertEl.remove(), 5000);
-    }
-
-    // Inicializa o socket para o usuário selecionado
-    function iniciarSocket(usuario){
-        usuarioAtivo = usuario;
-        if(chatSocket) chatSocket.close();
-        chatMessages.innerHTML = '';
-
-        chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${usuarioAtivo}/`);
-
-        chatSocket.onopen = () => console.log(`✅ Conectado ao chat de ${usuarioAtivo}`);
-        chatSocket.onerror = err => console.error("❌ Erro WebSocket:", err);
-
-        chatSocket.onmessage = function(event){
+        window.chatSocket.onmessage = function(event) {
             const data = JSON.parse(event.data);
-            console.log("📥 Mensagem recebida:", data);
+            const remetente = data.remetente?.trim() || data.usuario_nome?.trim() || "Usuário";
 
+            // Evita eco da própria mensagem (usuário)
+            if (!isAdmin && data.usuario_nome === usuarioNome && !data.admin) return;
+
+            // Exibe mensagem no chat
             const msgEl = document.createElement('div');
-            const remetente = data.remetente || "Usuário";
-
             msgEl.textContent = `${remetente}: ${data.mensagem}`;
-            msgEl.className = data.admin ? "mb-1 text-sm text-blue-600" : "mb-1 text-sm text-gray-800";
-
-            // Alerta se a mensagem é de outro usuário
-            if(data.alert && data.usuario_nome !== usuarioAtivo) criarAlerta(`Nova mensagem de ${data.usuario_nome}!`);
-
+            msgEl.className = data.admin
+                ? "mb-1 text-sm text-blue-600"
+                : "mb-1 text-sm text-gray-800";
             chatMessages.appendChild(msgEl);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
+
+            // --- ALERTAS ---
+            const chatFechado = chatModal.classList.contains('hidden');
+            const deveAlertar = isAdmin && !data.admin && data.alert && chatFechado;
+
+            if (deveAlertar) {
+                // Modal visual
+                if (!document.getElementById('chat-alert-modal')) {
+                    const overlay = document.createElement('div');
+                    overlay.id = 'chat-alert-modal';
+                    overlay.className = 'fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50';
+
+                    const modal = document.createElement('div');
+                    modal.className = 'bg-gradient-to-br from-white via-gray-50 to-gray-100 p-6 rounded-3xl shadow-2xl max-w-sm w-full text-center transform transition-all duration-500 scale-95 hover:scale-100 ring-1 ring-gray-200';
+
+
+                    const title = document.createElement('h3');
+                    title.className = 'text-lg font-bold mb-3 text-red-700';
+                    title.textContent = '🚨 Nova mensagem de usuário!';
+
+                    const sender = document.createElement('p');
+                    sender.className = 'text-gray-700 font-semibold mb-2';
+                    sender.textContent = `De: ${remetente}`;
+
+                    const preview = document.createElement('p');
+                    preview.className = 'mb-4 text-gray-800 italic';
+                    preview.textContent = `"${data.mensagem}"`;
+
+                    const okButton = document.createElement('button');
+                    okButton.textContent = 'Abrir chat';
+                    okButton.className = 'px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition';
+                    okButton.onclick = () => {
+                        overlay.remove();
+                        chatModal.classList.remove('hidden');
+                    };
+
+                    modal.appendChild(title);
+                    modal.appendChild(sender);
+                    modal.appendChild(preview);
+                    modal.appendChild(okButton);
+                    overlay.appendChild(modal);
+                    document.body.appendChild(overlay);
+
+                    // Som
+                    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+                    audio.play().catch(() => {});
+                }
+
+                // 🔔 Notificação do sistema (se aba estiver minimizada)
+                if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+                    const notification = new Notification("💬 Nova mensagem de usuário!", {
+                        body: `${remetente}: ${data.mensagem}`,
+                        icon: "https://cdn-icons-png.flaticon.com/512/10313/10313090.png", // ícone de chat
+                    });
+
+                    // Ao clicar na notificação, abre o chat
+                    notification.onclick = () => {
+                        window.focus();
+                        chatModal.classList.remove('hidden');
+                        notification.close();
+                    };
+                }
+            }
+        };
     }
 
-    // Enviar mensagem como admin
-    function enviarMensagemAdmin(){
-        const texto = chatInput.value.trim();
-        if(!texto || !usuarioAtivo) return;
+    function enviarMensagem() {
+        const mensagem = chatInput.value.trim();
+        if (!mensagem) return;
 
-        const payload = {
-            mensagem: texto,
-            admin: true,
-            destinatario_username: usuarioAtivo
-        };
-        console.log("📤 Enviando mensagem:", payload);
-        chatSocket.send(JSON.stringify(payload));
+        const payload = { mensagem: mensagem, admin: isAdmin };
+
+        if (isAdmin) {
+            const destinatarioEl = document.getElementById('chat-destinatario');
+            payload.destinatario_username = destinatarioEl ? destinatarioEl.value : null;
+        }
+
+        window.chatSocket.send(JSON.stringify(payload));
+
+        // Exibe eco local
+        const msgEl = document.createElement('div');
+        msgEl.textContent = `${isAdmin ? "Você" : usuarioNome}: ${mensagem}`;
+        msgEl.className = isAdmin
+            ? "mb-1 text-sm text-blue-600 text-right"
+            : "mb-1 text-sm text-gray-800 text-right";
+
+        chatMessages.appendChild(msgEl);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
         chatInput.value = '';
     }
 
-    // Eventos de envio
-    chatSend.addEventListener('click', enviarMensagemAdmin);
-    chatInput.addEventListener('keypress', e => { if(e.key === 'Enter') enviarMensagemAdmin(); });
-
-    // Clique em usuário na lista
-    document.querySelectorAll('.abrir-chat-usuario').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const username = btn.dataset.username;
-            usuarioAtivo = username;
-            console.log("👤 Abrindo chat com:", username);
-            iniciarSocket(usuarioAtivo);
-            chatModal.classList.remove('hidden');
-        });
-    });
-
-    // Fechar/abrir modal
-    document.getElementById('abrir-chat')?.addEventListener('click', ()=>chatModal.classList.remove('hidden'));
-    document.getElementById('fechar-chat')?.addEventListener('click', ()=>chatModal.classList.add('hidden'));
-    chatModal?.addEventListener('click', e => { if(e.target === chatModal) chatModal.classList.add('hidden'); });
+    if (chatSend) chatSend.addEventListener('click', enviarMensagem);
+    if (chatInput) chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensagem(); });
 });
 </script>
-{% endif %}
 
 {% endblock %}
