@@ -14,8 +14,11 @@ from .utils import carregar_chamados_excel
 from .forms import LoginForm, ChamadoForm, UploadExcelForm
 from .models import Chamado, CustomUser, InventarioExcel
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import ChatMessage, CustomUser
-import pandas as pd
+from datetime import timedelta
+import threading
+import time
+from django.utils import timezone
+from .models import Chamado
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
@@ -150,7 +153,6 @@ def excluir_usuario(request, user_id):
 
 @ login_required
 def sistema_chamados_view(request):
-
     # ------------------------------
     # Filtro por data
     # ------------------------------
@@ -198,7 +200,7 @@ def sistema_chamados_view(request):
     # ------------------------------
     # Busca chamados reais do banco
     # ------------------------------
-    chamados_qs = Chamado.objects.all().order_by('-data')
+    chamados_qs = Chamado.objects.filter(status='Aberto').order_by('-data')
     if data_filtro:
         chamados_qs = chamados_qs.filter(data=data_filtro)
     if regional_selecionada:
@@ -226,8 +228,8 @@ def sistema_chamados_view(request):
         lideres=lideres_filtrados,
         motivos_db=motivos_db,
         initial={
-            'motivo': motivo_atual,  # garante que motivo não desapareça
-            'lider': lider_selecionado  # mantém o líder selecionado
+            'motivo': motivo_atual,
+            'lider': lider_selecionado
         }
     )
 
@@ -247,10 +249,30 @@ def sistema_chamados_view(request):
         chamado.save()
         messages.success(request, "✅ Chamado cadastrado!")
 
-        # Preserva filtros e líder no redirect
         return redirect(
             f"{request.path}?data={data_str}&regional={regional_selecionada}&loja={loja_selecionada}&lider={form.cleaned_data.get('lider', '')}"
         )
+
+    # ------------------------------
+    # Debug detalhado de usuários
+    # ------------------------------
+    from django.contrib.auth import get_user_model
+    CustomUser = get_user_model()
+
+    todos_usuarios = CustomUser.objects.all()
+    admins = CustomUser.objects.filter(is_staff=True)
+    usuarios_comuns = CustomUser.objects.filter(is_staff=False)
+
+    print(f"DEBUG: request.user = {request.user.username}, is_staff = {request.user.is_staff}")
+    print(f"DEBUG: Total usuários no banco = {todos_usuarios.count()}")
+    print(f"DEBUG: Admins = {list(admins)}")
+    print(f"DEBUG: Usuários comuns = {list(usuarios_comuns)}")
+
+    if request.user.is_staff:
+        usuarios = usuarios_comuns
+        print(f"DEBUG: usuários enviados para o contexto (excluindo admins) = {list(usuarios)}")
+    else:
+        usuarios = []
 
     # ------------------------------
     # Renderiza template
@@ -265,7 +287,9 @@ def sistema_chamados_view(request):
         'regional_selecionada': regional_selecionada,
         'loja_selecionada': loja_selecionada,
         'chamados': chamados_df.to_dict('records') if not chamados_df.empty else [],
+        'usuarios': usuarios,
     })
+
 
 @login_required
 def chamados_ativos(request):
@@ -305,7 +329,7 @@ def chamados_ativos(request):
             chamado.usuario = request.user
             chamado.save()
 
-            messages.success(request, "Chamado cadastrado com sucesso!")
+            messages.success(request, f"Chamado {chamado.loja} cadastrado com sucesso!")
             return redirect('chamados:chamados_ativos')
         else:
             print("ERROS DO FORM:", form.errors)
@@ -332,12 +356,28 @@ def finalizar_chamado_view(request, pk):
         chamado.status = 'Finalizado'
         chamado.fechamento = timezone.now()
         chamado.observacao = request.POST.get('observacao', '')
-        if chamado.abertura:
-            chamado.duracao = chamado.fechamento - chamado.abertura
+
+        # Verifica se o usuário forneceu um tempo manual
+        if request.POST.get('usar_tempo_manual') == 'Sim':
+            minutos_str = request.POST.get('tempo_manual', '')
+            try:
+                minutos = int(minutos_str)
+                if minutos > 0:
+                    chamado.tempo_manual = timedelta(minutes=minutos)
+                    chamado.duracao = chamado.tempo_manual  # redundância segura
+                else:
+                    chamado.tempo_manual = None
+                    chamado.duracao = chamado.fechamento - chamado.abertura if chamado.abertura else None
+            except ValueError:
+                chamado.tempo_manual = None
+                chamado.duracao = chamado.fechamento - chamado.abertura if chamado.abertura else None
         else:
-            chamado.duracao = None
+            chamado.tempo_manual = None
+            chamado.duracao = chamado.fechamento - chamado.abertura if chamado.abertura else None
+
         chamado.save()
-        messages.success(request, f"✅ Chamado {pk} finalizado!")
+        messages.success(request, f"✅ Chamado da loja {chamado.loja} ({chamado.lider}) finalizado!")
+
 
     # Recupera filtros da query string para manter na tela
     data = request.GET.get('data', '')
@@ -604,32 +644,40 @@ def upload_excel(request):
 
 @login_required
 def exportar_excel_view(request):
-    chamados = Chamado.objects.all().values()
-    df = pd.DataFrame(chamados)
+    chamados = Chamado.objects.all()
 
-    # Converter datetimes
-    for col in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            if df[col].dt.tz is not None:
-                df[col] = df[col].dt.tz_localize(None)
-            df[col] = df[col].dt.strftime('%d/%m/%Y %H:%M:%S')
+    data = []
+    for c in chamados:
+        duracao = c.tempo_manual or c.duracao or timedelta(0)
+        total_minutos = int(duracao.total_seconds() // 60)
+        horas = total_minutos // 60
+        minutos = total_minutos % 60
 
-    # Formatar duração para "Xh Ymin"
-    if 'duracao' in df.columns:
-        def format_duracao_excel(value):
-            if pd.isnull(value):
-                return ""
-            total_seconds = int(value.total_seconds())
-            hours = total_seconds // 3600
-            minutes = (total_seconds % 3600) // 60
-            return f"{hours}h {minutes}min"
+        # Se o motivo for OUTRO, adiciona o texto de outro_motivo
+        if c.motivo.upper() == 'OUTRO' and c.outro_motivo:
+            motivo_relatorio = f'OUTRO ({c.outro_motivo})'
+        else:
+            motivo_relatorio = c.motivo
 
-        df['duracao'] = df['duracao'].apply(format_duracao_excel)
+        data.append({
+            'ID': c.id,
+            'Regional': c.regional,
+            'Loja': c.loja,
+            'Líder': c.lider,
+            'Motivo': motivo_relatorio,
+            'Abertura': c.abertura.strftime('%d/%m/%Y %H:%M:%S') if c.abertura else '',
+            'Fechamento': c.fechamento.strftime('%d/%m/%Y %H:%M:%S') if c.fechamento else '',
+            'Status': c.status,
+            'Duração': f'{horas}h {minutos}min',
+            'Tempo Manual': f'{c.tempo_manual}' if c.tempo_manual else '',
+            'Observação': c.observacao or '',
+        })
 
+    df = pd.DataFrame(data)
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename=Lista de Chamados.xlsx'
+    response['Content-Disposition'] = 'attachment; filename="Lista de Chamados.xlsx"'
     df.to_excel(response, index=False)
     return response
 
@@ -645,9 +693,9 @@ def zerar_banco_view(request):
 
 @staff_member_required
 def chat_admin_view(request):
-    # Pega todos os usuários que já enviaram mensagens
-    usuarios = CustomUser.objects.filter(chatmessage__isnull=False).distinct()
-    return render(request, 'chamados/chat_admin.html', {
+    print("✅ View: chat_admin_view chamada por", request.user)
+    usuarios = CustomUser.objects.exclude(is_staff=True)  # pega todos os usuários normais
+    return render(request, 'chamados/sistema_chamados.html', {
         'usuarios': usuarios,
     })
 

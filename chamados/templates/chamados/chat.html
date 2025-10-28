@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="border p-4 rounded w-full max-w-lg mx-auto flex flex-col">
+    <h3 class="font-bold mb-2">💬 Chat</h3>
+    <div id="chat-messages-user" class="border flex-1 h-64 overflow-y-auto p-2 mb-2"></div>
+    <div class="flex gap-2 mt-auto">
+        <input type="text" id="chat-input-user" class="border flex-1 p-2" placeholder="Digite sua mensagem...">
+        <button id="chat-send-user" class="px-4 py-2 bg-blue-500 text-white rounded">Enviar</button>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("🔍 DOMContentLoaded disparou para chat.html");
+
+    const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
+    if (isAdmin) {
+        console.error("⚠️ Admin usando interface de usuário. Redirecionando para /chat/admin/");
+        window.location.href = "/chat/admin/";
+        return;
+    }
+
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const username = "{{ request.user.username }}";
+
+    const chatMessages = document.getElementById('chat-messages-user');
+    const chatInput = document.getElementById('chat-input-user');
+    const chatSend = document.getElementById('chat-send-user');
+
+    const chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${username}/`);
+
+    chatSocket.onopen = () => console.log(`✅ Usuário ${username} conectado ao chat`);
+    chatSocket.onerror = err => console.error("❌ Erro WebSocket usuário:", err);
+    chatSocket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        console.log("📩 Mensagem recebida:", data);
+        const msgEl = document.createElement('div');
+        const remetente = data.remetente || data.usuario_nome || "Admin";
+
+        msgEl.textContent = `${remetente}: ${data.mensagem}`;
+        msgEl.className = data.admin ? "mb-1 text-sm text-red-600" : "mb-1 text-sm text-gray-800";
+
+        chatMessages.appendChild(msgEl);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    if (data.alert) {
+        alert(`Nova mensagem de ${remetente}!`);
+    }
+};
+
+    function enviarMensagemUsuario() {
+        const mensagem = chatInput.value.trim();
+        if (!mensagem) return;
+
+        const payload = {
+            'mensagem': mensagem,
+            'admin': false
+        };
+        console.log("📤 Enviando payload:", payload);
+        chatSocket.send(JSON.stringify(payload));
+        chatInput.value = '';
+    }
+
+    chatSend.addEventListener('click', enviarMensagemUsuario);
+    chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensagemUsuario(); });
+});
+</script>
+{% endblock %}

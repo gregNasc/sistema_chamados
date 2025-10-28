@@ -44,7 +44,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             group_name = f"chat_user_{data['usuario']}"
             await self.channel_layer.group_add(group_name, self.channel_name)
             print(f"👂 Admin {self.scope['user'].username} escutando o grupo {group_name}")
-            print(f"🔎 Enviando para grupo: chat_user_{destinatario_username}")
+            print(f"🔎 Enviando para grupo: chat_user_{'usuario'}")
             return  # encerra aqui, sem processar como mensagem normal
 
         mensagem = data.get('mensagem', '').strip()
@@ -57,7 +57,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         try:
             if enviado_por_admin:
-                destinatario_username = data.get("destinatario_username")
+                destinatario_username = data.get("destinatario_username") or getattr(self, "ultimo_remetente", None)
                 print(f"📤 Admin {self.scope['user'].username} enviando mensagem para: {destinatario_username}")
                 if not destinatario_username:
                     print("⚠️ Destinatário não definido")

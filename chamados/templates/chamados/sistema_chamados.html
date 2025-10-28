@@ -102,44 +102,6 @@
     </button>
 </form>
 
-<!-- BOTÃO FLUTUANTE DO CHAT -->
-<button id="abrir-chat"
-         class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 hover:scale-110 transition transform z- animate-bounce">
-    💬
-</button>
-
-<!-- MODAL DO CHAT -->
-<div id="chat-modal"
-     class="fixed inset-0 bg-black bg-opacity-40 flex items-end justify-end hidden z-50">
-    <div class="bg-white w-80 h-96 rounded-t-2xl shadow-lg flex flex-col p-3 m-4 relative">
-    <div id="chat-alerts" class="fixed top-6 right-6 w-80 z-50 space-y-2"></div>
-        <!-- Cabeçalho -->
-        <div class="flex justify-between items-center border-b pb-2 mb-2">
-            <h3 class="font-semibold text-gray-700">💬 Suporte</h3>
-            <button id="fechar-chat" class="text-gray-400 hover:text-gray-600">✖</button>
-        </div>
-
-        <!-- Mensagens -->
-        <div id="chat-messages" class="flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50"></div>
-
-        <!-- Campo de envio -->
-        <div class="flex gap-2">
-            <input type="text" id="chat-input"
-                   class="border flex-1 p-2 rounded focus:ring focus:ring-blue-300 text-sm"
-                   placeholder="Digite sua mensagem...">
-            <button id="chat-send"
-                    class="bg-blue-500 text-white px-3 rounded hover:bg-blue-600 transition">
-                ➤
-            </button>
-        </div>
-
-    </div>
-</div>
-<div class="usuarios-disponiveis">
-    {% for user in usuarios %}
-    <button class="abrir-chat-usuario" data-username="{{ user.username }}">Chat com {{ user.get_full_name|default:user.username }}</button>
-{% endfor %}
-</div>
 <!-- Lista de chamados -->
 <h2 class="text-xl font-semibold mt-10 mb-4 text-gray-700">📂 Chamados Abertos</h2>
 
@@ -198,22 +160,97 @@
         <h2 class="text-lg font-bold mb-4">Finalizar Chamado {{ chamado.loja }}</h2>
         <form method="post" id="form-finalizar">
             {% csrf_token %}
+
+            <!-- Observação -->
             <label>Deseja acrescentar uma observação?</label>
-            <select name="adicionar_obs" onchange="toggleObservacao(this)"
+            <select name="adicionar_obs" onchange="toggleObservacao(this)" class="w-full mb-3 border rounded px-2 py-1">
+                <option value="Não">Não</option>
+                <option value="Sim">Sim</option>
+            </select>
+            <textarea name="observacao" id="observacao" style="display:none" class="w-full border rounded px-2 py-1 mb-3"></textarea>
+
+             <!-- Tempo médio manual -->
+            <label>Deseja acrescentar o tempo médio manualmente?</label>
+            <select name="usar_tempo_manual" onchange="toggleTempoManual(this)"
                     class="w-full mb-3 border rounded px-2 py-1">
                 <option value="Não">Não</option>
                 <option value="Sim">Sim</option>
             </select>
-            <textarea name="observacao" id="observacao" style="display:none"
-                      class="w-full border rounded px-2 py-1 mb-3"></textarea>
+            <input type="number" name="tempo_manual" id="tempo_manual" min="1" placeholder="Minutos"
+                   style="display:none" class="w-full border rounded px-2 py-1 mb-3">
+
             <div class="flex justify-end gap-2">
-                <button type="button" onclick="fecharModal()" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancelar</button>
-                <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Confirmar</button>
+                <button type="button" onclick="fecharModal()"
+                        class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancelar</button>
+                <button type="submit"
+                        class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Confirmar</button>
             </div>
         </form>
     </div>
 </div>
 
+
+
+<!-- Modal Timer-->
+<div id="chamadoModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white rounded-lg p-6 w-80 shadow-lg">
+        <h2 class="text-lg font-bold mb-4" id="modalLoja">Chamado</h2>
+        <p id="modalTexto" class="mb-6">O chamado ainda da loja {{ chamado.loja }} ainda está aberto!</p>
+        <div class="flex justify-end gap-2">
+            <button id="btnSim" class="px-4 py-2 bg-green-500 text-white rounded">OK</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- BOTÃO FLUTUANTE DO CHAT -->
+<button id="abrir-chat"
+         class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 hover:scale-110 transition transform z- animate-bounce">
+    💬
+</button>
+
+<!-- MODAL DO CHAT -->
+<div id="chat-modal"
+     class="fixed inset-0 bg-black bg-opacity-40 flex items-end justify-end hidden z-50">
+    <div class="bg-white w-80 h-96 rounded-t-2xl shadow-lg flex flex-col p-3 m-4 relative">
+    <div id="chat-alerts" class="fixed top-6 right-6 w-80 z-50 space-y-2"></div>
+        <!-- Cabeçalho -->
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
+            <h3 class="font-semibold text-gray-700">💬 Suporte</h3>
+            <button id="fechar-chat" class="text-gray-400 hover:text-gray-600">✖</button>
+        </div>
+
+        <!-- Mensagens -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50"></div>
+
+        <!-- Campo de envio -->
+        <div class="flex gap-2">
+            <input type="text" id="chat-input"
+                   class="border flex-1 p-2 rounded focus:ring focus:ring-blue-300 text-sm"
+                   placeholder="Digite sua mensagem...">
+            <button id="chat-send"
+                    class="bg-blue-500 text-white px-3 rounded hover:bg-blue-600 transition">
+                ➤
+            </button>
+        </div>
+
+    </div>
+</div>
+{% if request.user.is_staff %}
+  {% if usuarios %}
+    <ul id="lista-usuarios">
+      {% for usuario in usuarios %}
+        <li>
+          <button class="abrir-chat-usuario" data-username="{{ usuario.username }}">
+            {{ usuario.get_full_name|default:usuario.username }}
+          </button>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Nenhum usuário disponível.</p>
+  {% endif %}
+{% endif %}
 <div id="chat-info"
      data-user-id="{{ request.user.id }}"
      data-user-nome="{{ request.user.get_full_name|default:request.user.username }}">
@@ -324,11 +361,94 @@ function fecharModal(){
     $('#modal-finalizar').hide();
 }
 
-function toggleObservacao(select){
-    if(select.value === 'Sim') $('#observacao').show();
-    else $('#observacao').hide().val('');
+function toggleObservacao(select) {
+    const textarea = document.getElementById('observacao');
+    textarea.style.display = select.value === 'Sim' ? 'block' : 'none';
 }
 
+function toggleTempoManual(select) {
+    const input = document.getElementById('tempo_manual');
+    if (select.value === 'Sim') {
+        input.style.display = 'block';
+    } else {
+        input.style.display = 'none';
+        input.value = '';  // limpa o valor quando não for usado
+    }
+}
+
+    document.getElementById('form-finalizar').addEventListener('submit', function (e) {
+    const usarTempoManual = document.querySelector('[name="usar_tempo_manual"]').value;
+    const tempoManual = document.getElementById('tempo_manual');
+
+    // Se o usuário marcou "Sim", mas não digitou nada
+    if (usarTempoManual === 'Sim' && tempoManual.value === '') {
+        e.preventDefault();
+        alert('⚠️ Por favor, informe o tempo manual antes de confirmar.');
+        tempoManual.focus();
+        return;
+    }
+
+    // Se marcou "Não", limpa o campo antes de enviar
+    if (usarTempoManual === 'Não') {
+        tempoManual.value = '';
+    }
+
+    tempoManual.disabled = false;
+});
+
+</script>
+
+<script>
+    const modal = document.getElementById('chamadoModal');
+    const modalLoja = document.getElementById('modalLoja');
+    const modalTexto = document.getElementById('modalTexto');
+    const btnOk = document.getElementById('btnSim'); // Agora só um botão "OK"
+
+    // Lista de lojas abertas do backend
+    const chamadosAbertos = [
+        {% for chamado in chamados %}
+            "{{ chamado.loja }}",
+        {% endfor %}
+    ];
+
+    // Armazena lojas que já foram exibidas (evita repetir)
+    const lojasExibidas = new Set();
+
+    // Função para mostrar um modal para uma loja específica
+    function mostrarModal(loja, callback) {
+        if (lojasExibidas.has(loja)) {
+            callback();
+            return;
+        }
+
+        modalLoja.textContent = `Chamado ${loja}`;
+        modalTexto.textContent = `O chamado da loja ${loja} ainda está aberto!`;
+        modal.classList.remove('hidden');
+
+        btnOk.onclick = () => {
+            lojasExibidas.add(loja);
+            modal.classList.add('hidden');
+            callback();
+        };
+    }
+
+    // Função para exibir os modais em sequência com delay
+    function mostrarChamadosSequenciais(lojas, index = 0) {
+        if (index >= lojas.length) return; // acabou a lista
+        mostrarModal(lojas[index], () => {
+            // Delay curto antes de mostrar o próximo modal
+            setTimeout(() => mostrarChamadosSequenciais(lojas, index + 1), 300);
+        });
+    }
+
+    // Executa a sequência ao carregar a página
+    if (chamadosAbertos.length > 0) {
+        mostrarChamadosSequenciais(chamadosAbertos);
+    }
+</script>
+
+
+<script>
 // ------------------------
 // CHAT USUÁRIO
 // ------------------------
@@ -400,11 +520,12 @@ chatSocket.onmessage = function(event) {
 {% if request.user.is_staff %}
 <script>
 // ------------------------
-// CHAT ADMIN
+// CHAT ADMIN SIMPLIFICADO
 // ------------------------
 document.addEventListener('DOMContentLoaded', function() {
-    const usuarioNome = "{{ request.user.get_full_name|default:request.user.username }}";
     const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
+    if(!isAdmin) return; // Só admins entram aqui
+
     const chatModal = document.getElementById('chat-modal');
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
@@ -414,9 +535,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let chatSocket = null;
     let usuarioAtivo = null;
 
-    // Container de alertas
+    // Container de alertas visuais
     let alertContainer = document.getElementById('chat-alerts');
-    if(isAdmin && !alertContainer){
+    if(!alertContainer){
         alertContainer = document.createElement('div');
         alertContainer.id = 'chat-alerts';
         alertContainer.className = 'fixed top-6 right-6 z-50 flex flex-col gap-2';
@@ -424,142 +545,79 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function criarAlerta(msg){
-        if(!isAdmin) return;
         const alertEl = document.createElement('div');
         alertEl.textContent = msg;
         alertEl.className = "p-2 bg-yellow-200 border border-yellow-400 rounded shadow text-sm";
         alertContainer.appendChild(alertEl);
+        console.log("🔔 Alerta:", msg);
         setTimeout(() => alertEl.remove(), 5000);
     }
 
-    // ------------------------
-    // Função de conexão ao chat
-    // ------------------------
-function entrarNoChat(usuario) {
-    console.log("Chamando entrarNoChat com usuario:", usuario);
-    if (!usuario || typeof usuario !== "string" || usuario.trim() === "") {
-        console.error("⚠️ Usuário inválido para entrar no chat:", usuario);
-        return;
-    }
-    usuarioAtivo = usuario;
-    if (chatSocket) {
-        chatSocket.close();
-    }
-    chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${usuarioAtivo}/`);
+    // Inicializa o socket para o usuário selecionado
+    function iniciarSocket(usuario){
+        usuarioAtivo = usuario;
+        if(chatSocket) chatSocket.close();
+        chatMessages.innerHTML = '';
 
-    chatSocket.onopen = () => console.log(`✅ Conectado ao chat de ${usuarioAtivo}`);
-    chatSocket.onerror = err => console.error("❌ Erro WebSocket:", err);
+        chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${usuarioAtivo}/`);
 
-    chatSocket.onmessage = function(event) {
-        console.log("Mensagem recebida do WS:", event.data);
-        const data = JSON.parse(event.data);
-        const msgEl = document.createElement('div');
-        const remetente = data.remetente || (data.admin ? "Admin" : data.usuario_nome || "Usuário");
+        chatSocket.onopen = () => console.log(`✅ Conectado ao chat de ${usuarioAtivo}`);
+        chatSocket.onerror = err => console.error("❌ Erro WebSocket:", err);
 
-        if (isAdmin) {
-            // Fluxo admin: Mostrar todas as mensagens, sem filtrar próprias
+        chatSocket.onmessage = function(event){
+            const data = JSON.parse(event.data);
+            console.log("📥 Mensagem recebida:", data);
+
+            const msgEl = document.createElement('div');
+            const remetente = data.remetente || "Usuário";
+
             msgEl.textContent = `${remetente}: ${data.mensagem}`;
             msgEl.className = data.admin ? "mb-1 text-sm text-blue-600" : "mb-1 text-sm text-gray-800";
-            if (data.alert && usuarioAtivo !== data.usuario_nome) {
-                criarAlerta(`Nova mensagem de ${data.usuario_nome}!`);
-            }
-        } else {
-            // Fluxo usuário
-            if (data.admin === true) {
-                msgEl.textContent = `${remetente}: ${data.mensagem}`;
-                msgEl.className = "mb-1 text-sm text-blue-600";
-            } else if (data.usuario_nome === usuarioNome) {
-                msgEl.textContent = `${data.usuario_nome}: ${data.mensagem}`;
-                msgEl.className = "mb-1 text-sm text-gray-800 text-right";
-            } else {
-                msgEl.textContent = `${remetente}: ${data.mensagem}`;
-                msgEl.className = "mb-1 text-sm text-gray-700";
-            }
-            if (data.alert && data.admin) { // Alert para mensagens de admin
-                alert(`Nova mensagem de ${remetente}!`);
-            }
-        }
 
-        if (chatMessages) {
+            // Alerta se a mensagem é de outro usuário
+            if(data.alert && data.usuario_nome !== usuarioAtivo) criarAlerta(`Nova mensagem de ${data.usuario_nome}!`);
+
             chatMessages.appendChild(msgEl);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
-    };
-
-    if (chatMessages) {
-        chatMessages.innerHTML = '';
     }
-}
 
-    // Tornar a função global (opcional) para testes no console
-    window.entrarNoChat = entrarNoChat;
-
-    // ------------------------
-    // Envio de mensagens
-    // ------------------------
-    function enviarMensagemAdmin() {
-                if (!chatSocket) return;
-        if (!usuarioAtivo) {
-            alert("Selecione um usuário para enviar mensagem.");
-            return;
-        }
+    // Enviar mensagem como admin
+    function enviarMensagemAdmin(){
         const texto = chatInput.value.trim();
-        if (!texto) return;
+        if(!texto || !usuarioAtivo) return;
 
         const payload = {
             mensagem: texto,
             admin: true,
             destinatario_username: usuarioAtivo
         };
-
+        console.log("📤 Enviando mensagem:", payload);
         chatSocket.send(JSON.stringify(payload));
         chatInput.value = '';
     }
 
-}
+    // Eventos de envio
+    chatSend.addEventListener('click', enviarMensagemAdmin);
+    chatInput.addEventListener('keypress', e => { if(e.key === 'Enter') enviarMensagemAdmin(); });
 
-     chatSend?.addEventListener('click', enviarMensagemAdmin);
-    chatInput?.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensagemAdmin(); });
-
-
-    // ------------------------
-    // Fluxo do admin
-    // ------------------------
-    if(isAdmin){
-        // Botões de usuários online
-        document.querySelectorAll('.abrir-chat-usuario').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const usuario = this.dataset.username;
-                entrarNoChat(usuario);
-                chatModal.classList.remove('hidden');
-            });
+    // Clique em usuário na lista
+    document.querySelectorAll('.abrir-chat-usuario').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const username = btn.dataset.username;
+            usuarioAtivo = username;
+            console.log("👤 Abrindo chat com:", username);
+            iniciarSocket(usuarioAtivo);
+            chatModal.classList.remove('hidden');
         });
+    });
 
-        document.getElementById('fechar-chat')?.addEventListener('click', () => chatModal.classList.add('hidden'));
-        chatModal?.addEventListener('click', e => { if(e.target === chatModal) chatModal.classList.add('hidden'); });
-
-    } else {
-        // ------------------------
-        // Fluxo do usuário normal
-        // ------------------------
-        usuarioAtivo = usuarioNome;
-        chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${usuarioAtivo}/`);
-
-        chatSocket.onmessage = function(event) {
-            console.log("Mensagem recebida do WS:", event.data);
-            const data = JSON.parse(event.data);
-            const msgEl = document.createElement('div');
-            msgEl.textContent = `${data.remetente}: ${data.mensagem}`;
-            msgEl.className = "mb-1 text-sm text-gray-800";
-            if(chatMessages){
-                chatMessages.appendChild(msgEl);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-        };
-    }
+    // Fechar/abrir modal
+    document.getElementById('abrir-chat')?.addEventListener('click', ()=>chatModal.classList.remove('hidden'));
+    document.getElementById('fechar-chat')?.addEventListener('click', ()=>chatModal.classList.add('hidden'));
+    chatModal?.addEventListener('click', e => { if(e.target === chatModal) chatModal.classList.add('hidden'); });
 });
 </script>
-
 {% endif %}
 
 {% endblock %}

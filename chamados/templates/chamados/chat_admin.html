@@ -1,70 +1,106 @@
-<div class="flex gap-4">
-    <!-- Lista de usuários -->
-    <div class="w-1/3 border p-2 h-[500px] overflow-y-auto">
-        <h3 class="font-bold mb-2">Usuários</h3>
-        <ul id="user-list">
-            {% for user in usuarios %}
-                <li>
-                    <a href="#" class="user-link" data-user-id="{{ user.id }}">{{ user.username }}</a>
-                </li>
-            {% endfor %}
-        </ul>
-    </div>
+{% extends "base.html" %}
+{% load static %}
 
-    <!-- Chat do usuário selecionado -->
-    <div class="w-2/3 border p-4 rounded">
-        <h3 id="chat-title" class="font-bold mb-2">💬 Chat</h3>
-        <div id="chat-messages" class="border h-64 overflow-y-auto p-2 mb-2"></div>
-        <input type="text" id="chat-input" class="border w-full p-2" placeholder="Digite sua mensagem...">
-        <button id="chat-send" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded">Enviar</button>
+{% block content %}
+<div class="flex gap-4">
+  <div class="w-1/3 border p-2 h-[500px] overflow-y-auto">
+    <h3 class="font-bold mb-2">Usuários</h3>
+    <ul id="user-list">
+      {% for user in usuarios %}
+        {% if user.username != request.user.username %}
+        <li>
+          <button class="abrir-chat-usuario w-full text-left px-2 py-1 hover:bg-gray-200 rounded" data-username="{{ user.username }}">
+            {{ user.get_full_name|default:user.username }}
+          </button>
+        </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="w-2/3 border p-4 rounded flex flex-col">
+    <h3 id="chat-title-admin" class="font-bold mb-2">💬 Chat</h3>
+    <div id="chat-messages-admin" class="border flex-1 h-64 overflow-y-auto p-2 mb-2"></div>
+    <div class="flex gap-2 mt-auto">
+      <input type="text" id="chat-input-admin" class="border flex-1 p-2" placeholder="Digite sua mensagem...">
+      <button id="chat-send-admin" class="px-4 py-2 bg-blue-500 text-white rounded">Enviar</button>
     </div>
+  </div>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+  const username = "{{ user.username }}";
+  let chatSocket = null;
+  let usuarioAtivo = null;
 
-let selectedUserId = null;
-let chatSocket = null;
+  const chatMessages = document.getElementById('chat-messages-admin');
+  const chatInput = document.getElementById('chat-input-admin');
+  const chatSend = document.getElementById('chat-send-admin');
+  const chatTitle = document.getElementById('chat-title-admin');
 
-const chatMessages = document.getElementById('chat-messages');
-const chatInput = document.getElementById('chat-input');
-const chatSend = document.getElementById('chat-send');
-const userLinks = document.querySelectorAll('.user-link');
-const chatTitle = document.getElementById('chat-title');
-
-userLinks.forEach(link => {
-    link.addEventListener('click', function(e) {
-        e.preventDefault();
-
-        // Fecha socket anterior
-        if (chatSocket) {
-            chatSocket.close();
-        }
-
-        selectedUserId = this.dataset.userId;
-        chatTitle.textContent = `💬 Chat com ${this.textContent}`;
-        chatMessages.innerHTML = '';
-
-        const ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
-        chatSocket = new WebSocket(`${ws_scheme}://${window.location.host}/ws/chat/${selectedUserId}/`);
-
-        chatSocket.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            const mensagemEl = document.createElement('div');
-            mensagemEl.textContent = (data.admin ? "Admin: " : "Usuário: ") + data.mensagem;
-            mensagemEl.classList.add(data.admin ? 'text-red-600' : 'text-gray-800');
-            chatMessages.appendChild(mensagemEl);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        };
-    });
-});
-
-chatSend.addEventListener('click', function() {
-    const mensagem = chatInput.value.trim();
-    if (mensagem && chatSocket) {
-        chatSocket.send(JSON.stringify({'mensagem': mensagem, 'admin': true}));
-        chatInput.value = '';
+  // WebSocket geral para alertas
+  const adminSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${username}/`);
+  adminSocket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log("📩 Alerta recebido:", data);
+    if (data.alert && data.usuario_nome !== usuarioAtivo) {
+      criarAlerta(`Nova mensagem de ${data.usuario_nome}!`);
     }
-});
+  };
 
-chatInput.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') chatSend.click();
+  function criarAlerta(msg) {
+    const el = document.createElement('div');
+    el.textContent = msg;
+    el.className = "p-2 bg-yellow-200 border border-yellow-400 rounded shadow text-sm fixed top-2 right-2 z-50";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+  }
+
+  function entrarNoChatAdmin(selectedUsername) {
+    if (chatSocket) chatSocket.close();
+    usuarioAtivo = selectedUsername;
+    chatMessages.innerHTML = '';
+    chatTitle.textContent = `💬 Chat com ${usuarioAtivo}`;
+
+    chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${usuarioAtivo}/`);
+
+    chatSocket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const msgEl = document.createElement('div');
+      const remetente = data.remetente || data.usuario_nome;
+      msgEl.textContent = `${remetente}: ${data.mensagem}`;
+      msgEl.className = data.admin ? "mb-1 text-sm text-blue-600" : "mb-1 text-sm text-gray-800";
+      chatMessages.appendChild(msgEl);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+  }
+
+  function enviarMensagemAdmin() {
+    const mensagem = chatInput.value.trim();
+    if (!mensagem || !chatSocket || !usuarioAtivo) return;
+
+    // Mostrar imediatamente no chat
+    const localMsg = document.createElement('div');
+    localMsg.textContent = `Você: ${mensagem}`;
+    localMsg.className = "mb-1 text-sm text-blue-500";
+    chatMessages.appendChild(localMsg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    chatSocket.send(JSON.stringify({
+      mensagem,
+      admin: true,
+      destinatario_username: usuarioAtivo
+    }));
+    chatInput.value = '';
+  }
+
+  chatSend.addEventListener('click', enviarMensagemAdmin);
+  chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensagemAdmin(); });
+  document.querySelectorAll('.abrir-chat-usuario').forEach(btn => {
+    btn.addEventListener('click', () => entrarNoChatAdmin(btn.dataset.username));
+  });
 });
+</script>
+{% endblock %}

@@ -1,10 +1,64 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>⚠️ Zerar Banco de Dados</h1>
-<p>Esta ação apagará TODOS os dados do banco de dados!</p>
-<form method="post">
-    {% csrf_token %}
-    <button type="submit">Sim</button>
-    <a href="{% url 'chamados:dashboard' %}">Não</a>
-</form>
+<div class="min-h-[60vh] flex items-center justify-center p-6">
+  <div class="w-full max-w-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+    <div class="flex items-center gap-4">
+      <!-- Ícone de aviso -->
+      <svg class="w-12 h-12 text-red-600" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 20h20L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12 9v4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12 17h.01" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
+      <div>
+        <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">Zerar Banco de Dados</h1>
+        <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Atenção: ação <span class="font-semibold text-red-600">irreversível</span>.</p>
+      </div>
+    </div>
+
+    <div class="mt-5 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-md p-4">
+      <p class="text-sm text-red-700 dark:text-red-200">
+        Esta ação apagará <strong>TODOS</strong> os dados do banco de dados! Certifique-se de ter backup antes de continuar.
+      </p>
+    </div>
+
+    <form method="post" onsubmit="return confirmReset(event)" class="mt-6 flex flex-col sm:flex-row gap-3">
+      {% csrf_token %}
+      <button type="submit"
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-medium shadow-sm
+                     bg-red-600 hover:bg-red-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+        <!-- pequeno ícone -->
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 6h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M10 11v6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 11v6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Sim, apagar tudo
+      </button>
+
+      <a href="{% url 'chamados:dashboard' %}"
+         class="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none">
+        Cancelar
+      </a>
+    </form>
+
+    <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">Recomendação: Exporte o arquivo em excel antes de continuar. Esta operação não pode ser desfeita.</p>
+  </div>
+</div>
+
+<script>
+  // Confirmação extra — exige que o usuário digite "CONFIRMAR".
+  function confirmReset(e){
+    // evita envio por teclas acidentais
+    e = e || window.event;
+    const answer = prompt('Esta ação apagará TODOS os dados. Para confirmar, digite CONFIRMAR (tudo em maiúsculas).');
+    if (answer !== 'CONFIRMAR') {
+      // opcional: mostrar feedback leve
+      alert('Operação cancelada — texto não correspondeu a "CONFIRMAR".');
+      return false;
+    }
+    return true; // permite enviar o form
+  }
+</script>
 {% endblock %}

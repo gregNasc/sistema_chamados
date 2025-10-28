@@ -15,7 +15,6 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return f"{self.username} ({self.get_papel_display()})"
 
-
 class Chamado(models.Model):
     STATUS_CHOICES = (
         ('Aberto', 'Aberto'),
@@ -34,26 +33,24 @@ class Chamado(models.Model):
     observacao = models.TextField(null=True, blank=True)
     duracao = models.DurationField(null=True, blank=True)  # melhor que CharField
     data = models.DateField(blank=True, null=True)
+    tempo_manual = models.DurationField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
-        """
-        Calcula a duração automaticamente quando o chamado é finalizado.
-        Garante que abertura e fechamento tenham o mesmo timezone.
-        """
         if self.status == 'Finalizado' and self.fechamento and self.abertura:
             abertura = self.abertura
             fechamento = self.fechamento
 
-            # Se forem timezone-aware diferentes, converte fechamento para o timezone de abertura
             if abertura.tzinfo and fechamento.tzinfo and abertura.tzinfo != fechamento.tzinfo:
                 fechamento = fechamento.astimezone(abertura.tzinfo)
 
-            self.duracao = fechamento - abertura
+            # Se o tempo manual existir, usa ele
+            if self.tempo_manual:
+                self.duracao = self.tempo_manual
+            # Caso contrário, só calcula automaticamente se duracao não estiver definida
+            elif not self.duracao:
+                self.duracao = fechamento - abertura
 
         super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"Chamado {self.id} - {self.motivo} ({self.status})"
 
 
 class InventarioExcel(models.Model):
