@@ -7,23 +7,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
-        self.usuario_nome = self.scope['url_route']['kwargs']['username']
+        # manter a normalização aqui (você já tinha feito)
+        self.usuario_nome = self.scope['url_route']['kwargs']['username'].lower()
         self.group_name = f'chat_user_{self.usuario_nome}'
 
-        if self.scope["user"].is_staff:
+        # marcar se é admin (staff) hoje
+        self.is_admin = self.scope["user"].is_staff
+
+        if self.is_admin:
             # Admin entra no grupo geral de admins
             await self.channel_layer.group_add("chat_admins", self.channel_name)
             print(f"✅ Admin conectado ao grupo geral de admins")
         else:
-            # Usuário entra no próprio grupo
+            # Usuário entra no próprio grupo (somente)
             await self.channel_layer.group_add(self.group_name, self.channel_name)
-            # Usuário também entra no grupo de admins para enviar mensagens
-            await self.channel_layer.group_add(self.group_name, self.channel_name)
-            print(f"✅ Usuário conectado à sua sala e ao grupo de admins")
+            print(f"✅ Usuário conectado à sua sala privada: {self.usuario_nome}")
 
         await self.accept()
 
     async def disconnect(self, close_code):
+        # remover dos grupos
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
         await self.channel_layer.group_discard("chat_admins", self.channel_name)
 
@@ -35,9 +38,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         print(f"📥 Payload recebido: {data}")
 
-        enviado_por_admin = self.scope["user"].is_staff
+        enviado_por_admin = data.get('admin', False)
         mensagem = data.get('mensagem', '').strip()
-        destinatario_username = data.get("destinatario_username", None)
+        destinatario_username = data.get("destinatario_username", "")
 
         if not mensagem:
             return
@@ -47,49 +50,75 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         try:
             if enviado_por_admin:
+                # ADMIN enviando — requer destinatario_username para envio privado
                 if destinatario_username:
-                    # Enviar para usuário específico
-                    usuario_destino = await database_sync_to_async(User.objects.get)(username=destinatario_username)
+                    # Nome do grupo (sempre lowercase)
+                    group_name = f"chat_user_{destinatario_username.lower()}"
 
+                    # Recupera usuário de destino e nome original para exibição
+                    usuario_destino = await database_sync_to_async(User.objects.get)(
+                        username__iexact=destinatario_username
+                    )
+                    usuario_exibicao = usuario_destino.get_full_name() or usuario_destino.username
+
+                    # Salva mensagem (enviado_por_admin=True)
                     await database_sync_to_async(ChatMessage.objects.create)(
                         usuario=usuario_destino,
                         texto=mensagem,
                         enviado_por_admin=True
                     )
 
+                    print(f"📤 Enviando para grupo: {group_name}")
+
+                    # Envia para o usuário destinatário
                     await self.channel_layer.group_send(
-                        f'chat_user_{destinatario_username}',
+                        group_name,
                         {
                             'type': 'chat_message',
                             'mensagem': mensagem,
                             'admin': True,
                             'remetente': remetente_nome,
-                            'usuario_nome': remetente_nome,
+                            'usuario_nome': usuario_exibicao,  # nome original para o frontend
                             'alert': False
                         }
                     )
+
+                    # Eco para o admin na aba correta
+                    await self.channel_layer.group_send(
+                        "chat_admins",
+                        {
+                            'type': 'chat_message',
+                            'mensagem': mensagem,
+                            'admin': True,
+                            'remetente': remetente_nome,
+                            'usuario_nome': usuario_exibicao,
+                            'alert': False
+                        }
+                    )
+
                 else:
-                    # Enviar para todos usuários
+                    # Admin sem destinatário: broadcast para todos os usuários
                     usuarios = await database_sync_to_async(list)(User.objects.filter(is_staff=False))
                     for usuario in usuarios:
+                        usuario_exibicao = usuario.get_full_name() or usuario.username
                         await database_sync_to_async(ChatMessage.objects.create)(
                             usuario=usuario,
                             texto=mensagem,
                             enviado_por_admin=True
                         )
                         await self.channel_layer.group_send(
-                            f'chat_user_{usuario.username}',
+                            f'chat_user_{usuario.username.lower()}',
                             {
                                 'type': 'chat_message',
                                 'mensagem': mensagem,
                                 'admin': True,
                                 'remetente': remetente_nome,
-                                'usuario_nome': remetente_nome,
+                                'usuario_nome': usuario_exibicao,
                                 'alert': False
                             }
                         )
             else:
-                # Usuário envia mensagem
+                # Usuário enviando mensagem → admins
                 usuario = await database_sync_to_async(User.objects.get)(username=self.usuario_nome)
                 await database_sync_to_async(ChatMessage.objects.create)(
                     usuario=usuario,
@@ -97,7 +126,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     enviado_por_admin=False
                 )
 
-                # Enviar para todos admins
+                # Envia para admins
                 await self.channel_layer.group_send(
                     "chat_admins",
                     {
@@ -105,12 +134,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'mensagem': mensagem,
                         'admin': False,
                         'remetente': remetente_nome,
-                        'usuario_nome': remetente_nome,
+                        'usuario_nome': self.usuario_nome,
                         'alert': True
                     }
                 )
 
-                # Enviar de volta para o próprio usuário
+                # Eco para o próprio usuário
                 await self.channel_layer.group_send(
                     self.group_name,
                     {
@@ -118,7 +147,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'mensagem': mensagem,
                         'admin': False,
                         'remetente': remetente_nome,
-                        'usuario_nome': remetente_nome,
+                        'usuario_nome': self.usuario_nome,
                         'alert': False
                     }
                 )
@@ -129,6 +158,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             print(f"❌ Erro ao processar mensagem: {str(e)}")
 
     async def chat_message(self, event):
+        # evento enviado pelas group_send
         print(f" Enviando evento para cliente: {event}")
         await self.send(text_data=json.dumps({
             'mensagem': event['mensagem'],

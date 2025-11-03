@@ -710,3 +710,103 @@ def run_migrations(request):
         return HttpResponse("✅ Migrations executadas com sucesso!")
     except Exception as e:
         return HttpResponse(f"❌ Erro ao executar migrations: {e}")
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+import requests
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.utils import timezone
+from django.shortcuts import get_object_or_404
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from django.contrib.auth.models import User
+from .models import ChatMessage
+@api_view(['POST'])
+def whatsapp_message(request):
+    data = request.data
+    numero = data.get('numero')
+    texto = data.get('texto')
+
+    print(f"📩 Mensagem do WhatsApp: {numero} → {texto}")
+
+    # Aqui você pode salvar no banco e emitir via WebSocket
+    # broadcast_chat_message(numero, texto)
+
+    return Response({'status': 'ok'})
+
+def enviar_whatsapp(numero, texto):
+    requests.post('http://127.0.0.1:3333/send', json={
+        'numero': numero,
+        'texto': texto
+    })
+
+def normalize_phone(raw):
+    # raw vem do Venom, ex: '5511999999999@c.us' ou '5511999999999'
+    n = raw.split('@')[0]
+    return n
+
+@api_view(['POST'])
+def whatsapp_incoming(request):
+    """
+    Recebe payload do Venom: { "numero": "...", "texto": "..." }
+    """
+    data = request.data
+    numero_raw = data.get('numero')
+    texto = data.get('texto', '')
+
+    if not numero_raw or texto is None:
+        return Response({'error': 'invalid payload'}, status=400)
+
+    numero = normalize_phone(numero_raw)
+
+    # 1) encontrar usuário do seu sistema pelo telefone
+    try:
+        usuario = ChatUser.objects.get(phone_number=numero)  # ajuste field
+    except ChatUser.DoesNotExist:
+        usuario = None
+
+    # 2) salvar no banco
+    msg = ChatMessage.objects.create(
+        user=usuario,
+        sender='whatsapp',   # ou 'support' conforme seu schema
+        content=texto,
+        created_at=timezone.now(),
+        from_whatsapp_number=numero
+    )
+
+    # 3) enviar via Channels para o frontend do usuário (grupo por usuário)
+    channel_layer = get_channel_layer()
+    if usuario:
+        group_name = f'chat_{usuario.pk}'
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                'type': 'chat.message',
+                'message': {
+                    'id': msg.pk,
+                    'from': 'support_whatsapp',
+                    'text': texto,
+                    'timestamp': msg.created_at.isoformat(),
+                }
+            }
+        )
+
+    # opcional: se não encontrou usuário, você pode criar um "lead" ou notificar admin
+    return Response({'status': 'ok'})
+
+import requests
+
+VENOM_URL = 'http://127.0.0.1:3333/send'
+
+def send_to_whatsapp(number, text):
+    if '@' not in number:
+        number = f'{number}@c.us'
+    try:
+        resp = requests.post(VENOM_URL, json={'numero': number, 'texto': text}, timeout=10)
+        resp.raise_for_status()
+        print(f"✅ WhatsApp enviado: {number} → {text}")
+        return resp.json()
+    except requests.RequestException as e:
+        print(f"❌ Erro ao enviar WhatsApp: {e}")
+        return {'error': str(e)}
