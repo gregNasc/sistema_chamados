@@ -11,13 +11,7 @@ class CustomUser(AbstractUser):
         ('usuario', 'Usuário'),
     )
     papel = models.CharField(max_length=10, choices=PAPEL_CHOICES, default='usuario')
-
-    telefone = models.CharField(
-        max_length=15,  # +55DDD999999999
-        blank=True,
-        null=True,
-        help_text="+5511975065259"
-    )
+    telefone = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
         return f"{self.username} ({self.get_papel_display()})"
