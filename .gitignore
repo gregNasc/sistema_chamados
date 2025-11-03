@@ -19,3 +19,7 @@ media/
 .vscode/
 .idea/
 
+# Ignorar binários grandes do Chrome
+whatsapp_bridge/chrome/chrome-win.zip
+whatsapp_bridge/chrome/chrome-win/chrome.dll
+whatsapp_bridge/chrome/chrome-win/interactive_ui_tests.exe
