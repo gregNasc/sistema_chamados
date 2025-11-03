@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-6=2wbklzetya@d6mvys#4$n6)4l=ce5i!q!u&fv5$6d4jmwy42')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = ['sistema-chamados-1-tp25.onrender.com', '127.0.0.1', 'localhost']
-
+RENDER = os.environ.get('RENDER', 'False') == 'True'
 # ------------------------------
 # LOGIN
 # ------------------------------
