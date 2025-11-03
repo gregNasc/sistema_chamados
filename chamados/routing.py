@@ -1,9 +1,10 @@
-from django.urls import re_path
-from . import consumers
-from django.urls import path
+from django.urls import re_path, path
 from .consumers import ChatConsumer
 
 websocket_urlpatterns = [
-    re_path(r'ws/chat/(?P<username>\w+)/$', consumers.ChatConsumer.as_asgi()),
+    # Rota dinâmica por username
+    re_path(r'ws/chat/(?P<username>\w+)/$', ChatConsumer.as_asgi()),
+
+    # Rota fixa para admins
     path('ws/chat/admins/', ChatConsumer.as_asgi()),
 ]
