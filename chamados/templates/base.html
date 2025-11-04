@@ -69,6 +69,90 @@
             {% endif %}
         </nav>
 
+        <!-- Filtros (colapsáveis) -->
+<form method="get" class="flex flex-col gap-2">
+
+    {% for col, values in filters.items %}
+    <div class="border border-gray-300 rounded-md bg-white">
+        <!-- Botão do cabeçalho do filtro -->
+        <button
+            type="button"
+            class="w-full flex justify-between items-center px-3 py-2 font-medium text-gray-700 hover:bg-gray-100 focus:outline-none filter-toggle"
+        >
+            {{ col|capfirst }}
+            <svg
+                class="w-4 h-4 transition-transform transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                />
+            </svg>
+        </button>
+
+        <!-- Lista de opções -->
+        <ul class="flex flex-col gap-1 px-3 py-2 max-h-0 overflow-hidden transition-all duration-300">
+            {% for value in values %}
+            <li>
+                <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                    <input
+                        type="checkbox"
+                        name="{{ col }}"
+                        value="{{ value }}"
+                        {% if value in filters_selected|get_item:col %}checked{% endif %}
+                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    >
+                    <span class="text-gray-800">{{ value }}</span>
+                </label>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+
+    <!-- Botão de aplicar filtros -->
+    <button
+        type="submit"
+        class="mt-4 w-full h-10 bg-blue-600 text-white rounded-md font-bold hover:bg-blue-700 transition-colors"
+    >
+        Filtrar
+    </button>
+
+</form>
+
+<script>
+// ---------------------------
+// Filtros colapsáveis
+// ---------------------------
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".filter-toggle").forEach(button => {
+    button.addEventListener("click", () => {
+      const list = button.nextElementSibling;
+      const icon = button.querySelector("svg");
+
+      const isOpen = list.style.maxHeight && list.style.maxHeight !== "0px";
+
+      if (isOpen) {
+        // Fecha o filtro
+        list.style.maxHeight = "0";
+        icon.classList.remove("rotate-180");
+      } else {
+        // Abre o filtro
+        list.style.maxHeight = `${list.scrollHeight}px`;
+        icon.classList.add("rotate-180");
+      }
+    });
+  });
+});
+</script>
+
+
+
         <div class="mt-auto pt-4 border-t border-gray-200">
             <img src="{% static 'chamados/img/invent_foot.png' %}" alt="Footer" class="w-full rounded-lg">
         </div>
