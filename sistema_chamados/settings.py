@@ -49,6 +49,11 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://sistema-chamados-1-tp25.onrender.com",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+]
 # ------------------------------
 # URLS
 # ------------------------------
