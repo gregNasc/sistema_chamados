@@ -13,159 +13,407 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-
     <script>
         const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
     </script>
-    <!-- Seu script -->
     <script src="{% static 'chamados/scripts.js' %}"></script>
 </head>
 
 <body class="text-gray-800 min-h-screen flex flex-col">
 
 {% if user.is_authenticated %}
-    <!-- Header -->
-    <header class="w-full bg-white/90 backdrop-blur shadow px-6 py-4 flex items-center justify-between lg:hidden">
-        <h1 class="text-lg font-bold">📋 Sistema de Chamados</h1>
-        <button id="menu-toggle" class="p-2 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-            </svg>
-        </button>
-    </header>
+<header class="w-full bg-white/90 backdrop-blur shadow px-6 py-4 flex items-center justify-between lg:hidden">
+    <h1 class="text-lg font-bold">📋 Sistema de Chamados</h1>
+    <button id="menu-toggle" class="p-2 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+    </button>
+</header>
 
-    <div class="flex flex-1">
-        <!-- Sidebar -->
-        <aside id="sidebar"
-               class="fixed inset-y-0 left-0 w-64 bg-white/95 backdrop-blur shadow-lg transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col p-6 overflow-y-auto">
+<div class="flex flex-1">
+    <!-- Sidebar -->
+    <aside id="sidebar"
+           class="fixed inset-y-0 left-0 w-64 bg-white/95 backdrop-blur shadow-lg transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col p-6 overflow-y-auto">
 
-            <!-- Usuário -->
-            <div class="mb-6 text-center">
-                <h3 class="text-lg font-bold mb-2">👋 Olá, {{ user.username.upper }}</h3>
-
-                </p>
-                <form method="post" action="{% url 'chamados:logout' %}" style="display:inline">
-                    {% csrf_token %}
-                    <button type="submit" class="text-sm text-red-600 hover:underline bg-none border-none p-0 cursor-pointer">
-                        Sair
-                    </button>
-                </form>
-            </div>
-
-            <!-- Navegação -->
-            <nav class="flex flex-col gap-2 text-sm font-medium mb-6">
-                <!-- Opções comuns -->
-                <a href="{% url 'chamados:dashboard' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📊 Dashboard</a>
-                <a href="{% url 'chamados:chamados_ativos' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📂 Sistema de Chamados</a>
-
-                <!-- Opções específicas -->
-                {% if user.papel|lower == 'gestor' %}
-                    <a href="{% url 'chamados:cadastrar_usuario' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">
-                        👤 Cadastrar Usuário
-                    </a>
-                {% endif %}
-
-                {% if user.papel|lower == 'admin' %}
-                    <a href="{% url 'chamados:cadastrar_usuario' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">
-                        👥 Cadastrar Usuários
-                    </a>
-
-                {% if user.papel|lower == 'admin' %}
-                    <a href="{% url 'chamados:gerenciar_usuarios' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">⚙️ Gerenciar Usuários</a>
-                {% endif %}
-                    <a href="{% url 'chamados:upload_excel' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📤 Upload Excel</a>
-                    <a href="{% url 'chamados:exportar_excel' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📥 Exportar Excel</a>
-                    <hr class="my-3">
-                    <a href="{% url 'chamados:zerar_banco' %}" class="px-3 py-2 rounded-lg bg-red-200 text-red-600 hover:bg-red-300">
-                        ⚠️ Zerar Banco de Dados
-                    </a>
-                {% endif %}
-            </nav>
-
-            <!-- Filtros Collapsible -->
-            <form method="get" class="flex flex-col gap-2">
-                {% for col, values in filters.items %}
-                    <div class="border border-gray-300 rounded-md bg-white">
-                        <button type="button"
-                                class="w-full flex justify-between items-center px-3 py-2 font-medium text-gray-700 hover:bg-gray-100 focus:outline-none filter-toggle">
-                            {{ col|capfirst }}
-                            <svg class="w-4 h-4 transition-transform transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
-                        <ul class="flex flex-col gap-1 px-3 py-2 max-h-0 overflow-hidden transition-all duration-300">
-                            {% for value in values %}
-                                <li>
-                                    <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
-                                        <input type="checkbox" name="{{ col }}" value="{{ value }}"
-                                               {% if value in filters_selected|get_item:col %}checked{% endif %}
-                                               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                        <span class="text-gray-800">{{ value }}</span>
-                                    </label>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                {% endfor %}
-                <button type="submit"
-                        class="mt-4 w-full h-10 bg-blue-600 text-white rounded-md font-bold hover:bg-blue-700 transition-colors">
-                    Filtrar
+        <div class="mb-6 text-center">
+            <h3 class="text-lg font-bold mb-2">👋 Olá, {{ user.username.upper }}</h3>
+            <form method="post" action="{% url 'chamados:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="text-sm text-red-600 hover:underline bg-none border-none p-0 cursor-pointer">
+                    Sair
                 </button>
             </form>
+        </div>
 
-            <!-- Footer -->
-            <div class="mt-auto pt-4 border-t border-gray-200">
-                <img src="{% static 'chamados/img/invent_foot.png' %}" alt="Footer" class="w-full rounded-lg">
-            </div>
-        </aside>
-
-        <!-- Conteúdo -->
-        <main class="flex-1 p-6 lg:ml-64 bg-white/70 rounded-tl-3xl shadow-inner backdrop-blur">
-            {% if messages %}
-                <div class="space-y-3 mb-6">
-                    {% for message in messages %}
-                        <div class="
-                            px-4 py-3 rounded-lg shadow text-sm font-medium
-                            {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}
-                            {% if message.tags == 'success' %}bg-green-100 text-green-800{% endif %}
-                            {% if message.tags == 'error' %}bg-red-100 text-red-800{% endif %}
-                            {% if message.tags == 'info' %}bg-blue-100 text-blue-800{% endif %}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
+        <nav class="flex flex-col gap-2 text-sm font-medium mb-6">
+            {% if user.papel|lower != 'usuario' %}
+                <a href="{% url 'chamados:dashboard' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📊 Dashboard</a>
             {% endif %}
 
-            {% block content %}{% endblock %}
-        </main>
-    </div>
+            <a href="{% url 'chamados:chamados_ativos' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📂 Sistema de Chamados</a>
+
+            {% if user.papel|lower == 'gestor' %}
+                <a href="{% url 'chamados:cadastrar_usuario' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">👤 Cadastrar Usuário</a>
+            {% endif %}
+
+            {% if user.papel|lower == 'admin' %}
+                <a href="{% url 'chamados:cadastrar_usuario' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">👥 Cadastrar Usuários</a>
+                <a href="{% url 'chamados:gerenciar_usuarios' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">⚙️ Gerenciar Usuários</a>
+                <a href="{% url 'chamados:upload_excel' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📤 Upload Excel</a>
+                <a href="{% url 'chamados:exportar_excel' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📥 Exportar Excel</a>
+                <hr class="my-3">
+                <a href="{% url 'chamados:zerar_banco' %}" class="px-3 py-2 rounded-lg bg-red-200 text-red-600 hover:bg-red-300">
+                    ⚠️ Zerar Banco de Dados
+                </a>
+            {% endif %}
+        </nav>
+
+        <div class="mt-auto pt-4 border-t border-gray-200">
+            <img src="{% static 'chamados/img/invent_foot.png' %}" alt="Footer" class="w-full rounded-lg">
+        </div>
+    </aside>
+
+    <main class="flex-1 p-6 lg:ml-64 bg-white/70 rounded-tl-3xl shadow-inner backdrop-blur">
+        {% if messages %}
+            <div class="space-y-3 mb-6">
+                {% for message in messages %}
+                    <div class="
+                        px-4 py-3 rounded-lg shadow text-sm font-medium
+                        {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}
+                        {% if message.tags == 'success' %}bg-green-100 text-green-800{% endif %}
+                        {% if message.tags == 'error' %}bg-red-100 text-red-800{% endif %}
+                        {% if message.tags == 'info' %}bg-blue-100 text-blue-800{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
 {% endif %}
 
-<script>
-  // Toggle sidebar
-  const toggleBtn = document.getElementById("menu-toggle");
-  const sidebar = document.getElementById("sidebar");
-  if (toggleBtn) {
-    toggleBtn.addEventListener("click", () => {
-      sidebar.classList.toggle("-translate-x-full");
-    });
-  }
+<!-- BOTÃO FLUTUANTE DO CHAT -->
+<button id="abrir-chat"
+        class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 hover:scale-110 transition transform z-50 animate-bounce">
+    💬 Suporte
+    <span id="chat-badge" class="absolute -top-1 -right-1 bg-red-600 text-xs text-white rounded-full px-1 hidden">0</span>
+</button>
 
-  // Collapsible filters
-  document.querySelectorAll('.filter-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const list = btn.nextElementSibling;
-      const icon = btn.querySelector('svg');
-      if (list.style.maxHeight && list.style.maxHeight !== '0px') {
-        list.style.maxHeight = '0';
-        icon.classList.remove('rotate-180');
-      } else {
-        list.style.maxHeight = list.scrollHeight + "px";
-        icon.classList.add('rotate-180');
-      }
+<!-- MODAL DO CHAT -->
+<div id="chat-modal"
+     class="fixed inset-0 bg-black bg-opacity-40 flex items-end justify-end hidden z-50 transition-opacity duration-300 ease-in-out">
+    <div id="chat-content"
+         class="bg-white w-96 h-96 rounded-3xl shadow-lg flex flex-col p-3 m-4 transform scale-95 opacity-0 transition-all duration-300 ease-in-out">
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
+            <h3 class="font-semibold text-gray-700">💬 Suporte</h3>
+            <button id="fechar-chat" class="text-gray-400 hover:text-gray-600">✖</button>
+        </div>
+        <div id="chat-messages" class="flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50"></div>
+        <div class="flex gap-2">
+            <input type="text" id="chat-input" class="border flex-1 p-2 rounded focus:ring focus:ring-blue-300 text-sm"
+                   placeholder="Digite sua mensagem...">
+            <button id="chat-send" class="bg-blue-500 text-white px-3 rounded hover:bg-blue-600 transition">➤</button>
+        </div>
+    </div>
+</div>
+</body>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const usuarioNome = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
+    const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
+    const userPapel = "{{ request.user.papel|default:''|lower }}"; // 👈 adicionado para detectar gestores
+
+    // ---- VERIFICAR SE OS ELEMENTOS EXISTEM ----
+    const abrirChatBtn = document.getElementById('abrir-chat');
+    const fecharChatBtn = document.getElementById('fechar-chat');
+    const chatModal = document.getElementById('chat-modal');
+    const chatContent = document.getElementById('chat-content');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
+    const badge = document.getElementById('chat-badge');
+
+    if (!abrirChatBtn || !fecharChatBtn || !chatModal || !chatContent || !chatMessages || !chatInput || !chatSend || !badge) {
+        console.error("❌ Chat não carregou: algum elemento do DOM não foi encontrado");
+        return;
+    }
+
+    // ---- ABRIR CHAT ----
+    abrirChatBtn.addEventListener('click', () => {
+        badge.textContent = "0";
+        badge.classList.add('hidden');
+        chatModal.classList.remove('hidden');
+        setTimeout(() => chatContent.classList.remove('scale-95', 'opacity-0'), 10);
     });
-  });
+
+    // ---- FECHAR CHAT ----
+    fecharChatBtn.addEventListener('click', () => fecharChat());
+    function fecharChat() {
+        chatContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => chatModal.classList.add('hidden'), 200);
+    }
+    chatModal.addEventListener('click', e => { if (e.target === chatModal) fecharChat(); });
+
+    // ---- WEBSOCKET ----
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    if (!window.chatSocket) {
+        window.chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/{{ request.user.username }}/`);
+
+        window.chatSocket.onopen = () => {
+            console.log(`✅ ${isAdmin ? "Admin" : "Usuário"} conectado ao WebSocket`);
+
+            // 💬 Enviar saudação automática com delay
+            if (isAdmin || userPapel === "gestor") {
+                setTimeout(() => {
+                    const nomeFormatado = usuarioNome ? usuarioNome.split(" ")[0] : "usuário";
+                    window.chatSocket.send(JSON.stringify({ mensagem: mensagemInicial, admin: true }));
+                    console.log("👋 Saudação enviada após 2s");
+                }, 2000);
+            }
+        };
+
+        window.chatSocket.onerror = err => console.error("❌ Erro WebSocket:", err);
+    }
+
+    // ---- ADMIN UI: abas por usuário ----
+    let abas = {};
+    let tabsContainer = null;
+    if (isAdmin) {
+        tabsContainer = document.createElement('div');
+        tabsContainer.id = 'chat-tabs';
+        tabsContainer.className = 'flex gap-2 mb-2 overflow-x-auto';
+        chatContent.insertBefore(tabsContainer, chatMessages);
+    }
+
+    function criarOuAtivarAba(usuario) {
+        if (abas[usuario]) { ativarAba(usuario); return abas[usuario].area; }
+        const tabBtn = document.createElement('button');
+        tabBtn.className = 'px-3 py-1 bg-gray-200 rounded-full text-sm hover:bg-blue-200 transition';
+        tabBtn.textContent = usuario;
+        const area = document.createElement('div');
+        area.className = 'flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50';
+        area.dataset.usuario = usuario;
+        tabBtn.onclick = () => ativarAba(usuario);
+        tabsContainer.appendChild(tabBtn);
+        Object.values(abas).forEach(a => { if (a.area.parentNode) a.area.classList.add('hidden'); });
+        if (chatMessages.parentNode) chatMessages.replaceWith(area);
+        abas[usuario] = { btn: tabBtn, area: area };
+        return area;
+    }
+
+    function ativarAba(usuario) {
+        Object.values(abas).forEach(a => a.area.classList.add('hidden'));
+        const target = abas[usuario];
+        if (!target) return;
+        if (!target.area.parentNode) {
+            const atual = document.querySelector('#chat-content > .flex-1');
+            if (atual) atual.replaceWith(target.area);
+            else chatContent.insertBefore(target.area, chatInput);
+        }
+        target.area.classList.remove('hidden');
+    }
+
+    // ---- FUNÇÕES DE ALERTA (APENAS PARA ADMINS) ----
+    function incrementarBadge() {
+        const valor = parseInt(badge.textContent || "0") + 1;
+        badge.textContent = valor;
+        badge.classList.remove('hidden');
+    }
+
+    function exibirModalAlerta(remetente, mensagem) {
+        if (!isAdmin) return;
+        if (document.getElementById('chat-alert-modal')) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'chat-alert-modal';
+        overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm';
+
+        const modal = document.createElement('div');
+        modal.className = `
+            bg-white/95 backdrop-blur-md
+            p-4 rounded-2xl shadow-lg
+            max-w-sm w-full
+            text-center
+            transform transition-all duration-300 scale-95 opacity-0
+        `;
+
+        setTimeout(() => {
+            modal.classList.remove('scale-90', 'opacity-0');
+            modal.classList.add('scale-100', 'opacity-100');
+        }, 10);
+
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-semibold mb-2 text-red-500 flex items-center justify-center gap-1';
+        title.innerHTML = '🚨 Nova mensagem';
+
+        const sender = document.createElement('p');
+        sender.className = 'text-gray-600 text-sm mb-1';
+        sender.textContent = `De: ${remetente}`;
+
+        const preview = document.createElement('p');
+        preview.className = 'text-gray-700 text-sm italic mb-4 truncate';
+        preview.textContent = `"${mensagem}"`;
+
+        const okButton = document.createElement('button');
+        okButton.textContent = 'Abrir chat';
+        okButton.className = `
+            px-4 py-1.5 bg-blue-600 text-white text-sm font-medium
+            rounded-lg shadow hover:bg-blue-700 transition
+        `;
+        okButton.onclick = () => {
+            overlay.remove();
+            chatModal.classList.remove('hidden');
+            chatInput.focus();
+            criarOuAtivarAba(remetente);
+            ativarAba(remetente);
+        };
+
+        modal.appendChild(title);
+        modal.appendChild(sender);
+        modal.appendChild(preview);
+        modal.appendChild(okButton);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+    }
+
+    function tocarSom() {
+        if (!isAdmin) return;
+        const audio = new Audio('https://actions.google.com/sounds/v1/emergency/beeper_emergency_call.ogg');
+        audio.play().catch(() => {});
+    }
+
+    function notificarSistema(remetente, mensagem) {
+        if (!isAdmin) return;
+        if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+            const notification = new Notification("💬 Nova mensagem de usuário!", {
+                body: `${remetente}: ${mensagem}`,
+                icon: "https://cdn-icons-png.flaticon.com/512/10313/10313090.png",
+            });
+            notification.onclick = () => {
+                window.focus();
+                chatModal.classList.remove('hidden');
+                chatInput.focus();
+                notification.close();
+                criarOuAtivarAba(remetente);
+                ativarAba(remetente);
+            };
+        }
+    }
+
+    let tituloOriginal = document.title;
+    let alertaAtivo = false;
+    function piscarTitulo(msg) {
+        if (!isAdmin) return;
+        if (alertaAtivo || !document.hidden) return;
+        alertaAtivo = true;
+        let alternar = true;
+        const intervalo = setInterval(() => {
+            document.title = alternar ? `💬 Nova: ${msg}` : tituloOriginal;
+            alternar = !alternar;
+            if (!document.hidden) {
+                clearInterval(intervalo);
+                document.title = tituloOriginal;
+                alertaAtivo = false;
+            }
+        }, 1000);
+    }
+
+    if (isAdmin && "Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().then(result => console.log("Permissão de notificação:", result));
+    }
+
+    // ---- RECEBIMENTO DE MENSAGENS ----
+    window.chatSocket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        const remetente = (data.remetente?.trim() || data.usuario_nome?.trim() || "Usuário");
+
+        if (!isAdmin) {
+            if (!data.admin && data.remetente === usuarioNome) return;
+            const destinatario = data.usuario_nome || data.destinatario_username;
+            if (data.admin && (data.usuario_nome || '').toLowerCase() !== usuarioNome.toLowerCase()) return;
+
+            const msgEl = document.createElement('div');
+            msgEl.textContent = `${remetente}: ${data.mensagem}`;
+            msgEl.className = data.admin
+                ? "mb-1 text-sm text-blue-600"
+                : "mb-1 text-sm text-gray-800";
+            chatMessages.appendChild(msgEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return;
+        }
+
+        if (!data.admin) {
+            const area = criarOuAtivarAba(remetente);
+            const msgEl = document.createElement('div');
+            msgEl.textContent = `${remetente}: ${data.mensagem}`;
+            msgEl.className = "mb-1 text-sm text-gray-800";
+            area.appendChild(msgEl);
+            area.scrollTop = area.scrollHeight;
+
+            const chatFechado = chatModal.classList.contains('hidden');
+            if (data.alert && chatFechado) {
+                incrementarBadge();
+                exibirModalAlerta(remetente, data.mensagem);
+                tocarSom();
+                notificarSistema(remetente, data.mensagem);
+                piscarTitulo(data.mensagem);
+            }
+            return;
+        }
+
+        if (data.admin) {
+            const destino = data.usuario_nome?.trim() || "Você";
+            const area = criarOuAtivarAba(destino);
+            if (data.remetente !== usuarioNome) {
+                const msgEl = document.createElement('div');
+                msgEl.textContent = `Você: ${data.mensagem}`;
+                msgEl.className = "mb-1 text-sm text-blue-600 text-right";
+                area.appendChild(msgEl);
+                area.scrollTop = area.scrollHeight;
+            }
+        }
+    };
+
+    // ---- ENVIO DE MENSAGEM ----
+    function enviarMensagem() {
+        const mensagem = chatInput.value.trim();
+        if (!mensagem) return;
+
+        if (!isAdmin) {
+            const payload = { mensagem: mensagem, admin: false };
+            window.chatSocket.send(JSON.stringify(payload));
+            const msgEl = document.createElement('div');
+            msgEl.textContent = `${usuarioNome}: ${mensagem}`;
+            msgEl.className = "mb-1 text-sm text-gray-800 text-right";
+            chatMessages.appendChild(msgEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            chatInput.value = '';
+            return;
+        }
+
+        const ativo = Object.values(abas).find(a => !a.area.classList.contains('hidden'));
+        if (!ativo) { alert('Selecione um usuário (aba) para enviar a mensagem.'); return; }
+        const destinatario = ativo.area.dataset.usuario;
+        const payload = { mensagem: mensagem, admin: true, destinatario_username: destinatario };
+        window.chatSocket.send(JSON.stringify(payload));
+
+        const msgEl = document.createElement('div');
+        msgEl.textContent = `Você: ${mensagem}`;
+        msgEl.className = "mb-1 text-sm text-blue-600 text-right";
+        ativo.area.appendChild(msgEl);
+        ativo.area.scrollTop = ativo.area.scrollHeight;
+
+        chatInput.value = '';
+    }
+
+    chatSend.addEventListener('click', enviarMensagem);
+    chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensagem(); });
+});
 </script>
 
-</body>
 </html>

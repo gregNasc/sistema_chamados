@@ -7,23 +7,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
-        # manter a normalização aqui (você já tinha feito)
+        # Normaliza o nome do usuário
         self.usuario_nome = self.scope['url_route']['kwargs']['username'].lower()
         self.group_name = f'chat_user_{self.usuario_nome}'
 
-        # marcar se é admin (staff) hoje
+        # Verifica se é admin (staff ou gestor)
         self.is_admin = self.scope["user"].is_staff
 
         if self.is_admin:
-            # Admin entra no grupo geral de admins
+            # Admin/Gestor entra no grupo geral de admins
             await self.channel_layer.group_add("chat_admins", self.channel_name)
-            print(f"✅ Admin conectado ao grupo geral de admins")
+            print(f"✅ Admin/Gestor conectado ao grupo geral de admins")
         else:
-            # Usuário entra no próprio grupo (somente)
+            # Usuário entra no próprio grupo
             await self.channel_layer.group_add(self.group_name, self.channel_name)
             print(f"✅ Usuário conectado à sua sala privada: {self.usuario_nome}")
 
+        # Aceita a conexão WebSocket
         await self.accept()
+
+        # 🔄 Mensagem automática para o usuário (somente quando não for admin/gestor)
+        if not self.is_admin:
+            nome_formatado = self.usuario_nome.capitalize()
+            await self.send(text_data=json.dumps({
+                'mensagem': (
+                    f"🔄 Olá, {nome_formatado}! 😃\n\n"
+                    "Como está seu dia hoje? Aguarda só um pouquinho que já vamos te atender.\n\n"
+                    "Para agilizar seu atendimento, poderia nos contar resumidamente o motivo do seu contato? 🚀"
+                ),
+                'remetente': 'Sistema'
+            }))
 
     async def disconnect(self, close_code):
         # remover dos grupos
