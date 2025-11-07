@@ -84,14 +84,9 @@ TEMPLATES = [
 WSGI_APPLICATION = 'sistema_chamados.wsgi.application'
 ASGI_APPLICATION = 'sistema_chamados.asgi.application'
 
-REDIS_URL = os.environ.get("REDIS_URL", "redis://red-d454kpuuk2gs73ft206g:6379")
-
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [REDIS_URL],
-        },
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 

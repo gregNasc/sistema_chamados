@@ -49,7 +49,7 @@
 {% if user.is_authenticated %}
 
 <!-- Mobile Header -->
-<header class="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-md z-40 flex items-center justify-between p-4">
+<header class="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-md z-50 flex items-center justify-between p-4">
     <h1 class="text-lg font-bold text-primary">Chamados</h1>
     <button id="menu-toggle" class="p-2 rounded-lg hover:bg-gray-100 transition">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,6 +209,25 @@
         </div>
     </main>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const sidebar = document.getElementById('sidebar');
+
+    menuToggle.addEventListener('click', () => {
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.classList.add('translate-x-0');
+        sidebarOverlay.classList.remove('hidden');
+    });
+
+    sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.add('-translate-x-full');
+        sidebar.classList.remove('translate-x-0');
+        sidebarOverlay.classList.add('hidden');
+    });
+});
+</script>
 
 <!-- Chat Button -->
 <button id="abrir-chat"
