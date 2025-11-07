@@ -2,63 +2,152 @@
 {% load static %}
 {% load custom_filters %}
 
+{% block title %}Dashboard - Sistema de Chamados{% endblock %}
+
 {% block content %}
-<h1 class="text-2xl font-bold mb-6">📊 Dashboard de Chamados</h1>
+<div class="space-y-8">
 
-<div class="flex gap-6">
+    <!-- Cabeçalho -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-sm animate-pulse">
+                <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 19v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6m6 0v-6a2 2 0 00-2-2h-2a2 2 0 00-2 2v6m-6 0H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-4"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Dashboard de Chamados</h1>
+                <p class="text-sm text-secondary">Visão geral em tempo real</p>
+            </div>
+        </div>
 
+        <!-- Contador de Chamados -->
+        <div class="flex items-center gap-2 text-sm">
+            <span class="text-secondary">Total de chamados:</span>
+            <span class="font-bold text-primary">{{ total_chamados|default:"0" }}</span>
+        </div>
+    </div>
 
-    <!-- Área principal: gráficos -->
-    <main class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Área de Gráficos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
         {% if plots %}
-            <!-- Linha 1 -->
+            <!-- Status -->
             {% if plots.status %}
-            <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
-                <h3 class="text-lg font-semibold mb-4">📌 Status</h3>
-                <img src="data:image/png;base64,{{ plots.status }}" alt="Status" class="mx-auto rounded-md">
+            <div class="group bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    Status Atual
+                </h3>
+                <div class="flex justify-center items-center h-48 bg-gray-50 rounded-xl overflow-hidden">
+                    <img src="data:image/png;base64,{{ plots.status }}"
+                         alt="Gráfico de Status dos Chamados"
+                         loading="lazy"
+                         class="max-h-full max-w-full object-contain">
+                </div>
             </div>
             {% endif %}
 
+            <!-- Regionais -->
             {% if plots.regionais %}
-            <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
-                <h3 class="text-lg font-semibold mb-4">📊 Chamados por Regional</h3>
-                <img src="data:image/png;base64,{{ plots.regionais }}" alt="Regionais" class="mx-auto rounded-md">
+            <div class="group bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    Chamados por Regional
+                </h3>
+                <div class="flex justify-center items-center h-48 bg-gray-50 rounded-xl overflow-hidden">
+                    <img src="data:image/png;base64,{{ plots.regionais }}"
+                         alt="Gráfico de Chamados por Regional"
+                         loading="lazy"
+                         class="max-h-full max-w-full object-contain">
+                </div>
             </div>
             {% endif %}
 
+            <!-- Líderes -->
             {% if plots.lideres %}
-            <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
-                <h3 class="text-lg font-semibold mb-4">👔 Principais Líderes</h3>
-                <img src="data:image/png;base64,{{ plots.lideres }}" alt="Líderes" class="mx-auto rounded-md">
+            <div class="group bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    Principais Líderes
+                </h3>
+                <div class="flex justify-center items-center h-48 bg-gray-50 rounded-xl overflow-hidden">
+                    <img src="data:image/png;base64,{{ plots.lideres }}"
+                         alt="Gráfico dos Líderes com Mais Chamados"
+                         loading="lazy"
+                         class="max-h-full max-w-full object-contain">
+                </div>
             </div>
             {% endif %}
 
-            <!-- Linha 2 -->
+            <!-- Motivos -->
             {% if plots.motivos %}
-            <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
-                <h3 class="text-lg font-semibold mb-4">⚙️ Principais Motivos</h3>
-                <img src="data:image/png;base64,{{ plots.motivos }}" alt="Motivos" class="mx-auto rounded-md">
+            <div class="group bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 md:col-span-2 lg:col-span-1">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    Principais Motivos
+                </h3>
+                <div class="flex justify-center items-center h-48 bg-gray-50 rounded-xl overflow-hidden">
+                    <img src="data:image/png;base64,{{ plots.motivos }}"
+                         alt="Gráfico dos Motivos Mais Frequentes"
+                         loading="lazy"
+                         class="max-h-full max-w-full object-contain">
+                </div>
             </div>
             {% endif %}
 
+            <!-- Tempo Médio -->
             {% if plots.tempo_medio %}
-            <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition
-                        md:col-start-2 md:col-span-2">
-                <h3 class="text-lg font-semibold mb-4">⏱ Tempo Médio de Suporte</h3>
-                <div class="max-w-full">
-                    <img src="data:image/png;base64,{{ plots.tempo_medio }}" alt="Tempo Médio" class="mx-auto rounded-md max-w-[250px]">
+            <div class="group bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 md:col-span-2 lg:col-span-2">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    Tempo Médio de Suporte
+                </h3>
+                <div class="flex justify-center items-center h-48 bg-gray-50 rounded-xl overflow-hidden">
+                    <img src="data:image/png;base64,{{ plots.tempo_medio }}"
+                         alt="Gráfico do Tempo Médio de Atendimento"
+                         loading="lazy"
+                         class="max-h-40 max-w-full object-contain">
                 </div>
             </div>
             {% endif %}
 
         {% else %}
-            <div class="bg-gray-100 text-gray-500 rounded-xl p-8 text-center col-span-full">
-                ⚠️ Nenhum dado disponível para exibir gráficos.
+            <!-- Fallback: Sem dados -->
+            <div class="col-span-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-12 text-center">
+                <div class="flex flex-col items-center gap-4">
+                    <div class="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center">
+                        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 17v-2m3 2v-2m3 2v-2m-9-4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-700">Nenhum dado disponível</h3>
+                    <p class="text-sm text-gray-500 max-w-md">
+                        Ainda não há chamados registrados. Comece cadastrando um novo chamado para visualizar os gráficos.
+                    </p>
+                    <a href="{% url 'chamados:cadastrar_chamado' %}"
+                       class="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm font-medium">
+                        Cadastrar Primeiro Chamado
+                    </a>
+                </div>
             </div>
         {% endif %}
-
-    </main>
+    </div>
 
 </div>
+
+<script>
+// Atualiza horário a cada minuto
+setInterval(() => {
+    const now = new Date();
+    const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const date = now.toLocaleDateString('pt-BR');
+    document.getElementById('last-update').textContent = `${date} ${time}`;
+}, 60000);
+</script>
+
+<style>
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+.animate-pulse { animation: pulse 2s ease-in-out infinite; }
+</style>
 {% endblock %}

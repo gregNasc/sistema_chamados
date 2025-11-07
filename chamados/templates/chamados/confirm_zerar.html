@@ -1,64 +1,135 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block content %}
-<div class="min-h-[60vh] flex items-center justify-center p-6">
-  <div class="w-full max-w-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-    <div class="flex items-center gap-4">
-      <!-- Ícone de aviso -->
-      <svg class="w-12 h-12 text-red-600" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2L2 20h20L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M12 9v4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M12 17h.01" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+<div class="min-h-[70vh] flex items-center justify-center p-4 bg-gradient-to-br from-red-50/50 via-white to-red-50/30">
+    <div class="w-full max-w-lg">
+        <div class="bg-white/90 backdrop-blur-md shadow-2xl rounded-2xl border border-red-100 p-8 animate-fade-in">
 
-      <div>
-        <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">Zerar Banco de Dados</h1>
-        <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Atenção: ação <span class="font-semibold text-red-600">irreversível</span>.</p>
-      </div>
+            <!-- Cabeçalho com Alerta -->
+            <div class="flex items-start gap-4 mb-6">
+                <div class="flex-shrink-0 w-14 h-14 bg-red-100 rounded-full flex items-center justify-center animate-pulse">
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Zerar Banco de Dados</h1>
+                    <p class="text-sm text-red-600 font-medium mt-1">Ação <span class="underline">irreversível</span></p>
+                </div>
+            </div>
+
+            <!-- Aviso Crítico -->
+            <div class="bg-red-50 border border-red-200 rounded-xl p-5 mb-6">
+                <p class="text-sm text-red-800 leading-relaxed">
+                    <strong class="font-bold">ATENÇÃO:</strong> Esta operação irá <strong>apagar PERMANENTEMENTE</strong> todos os chamados, usuários, logs e configurações.
+                </p>
+                <p class="text-xs text-red-700 mt-2">Recomendamos exportar os dados em Excel antes de prosseguir.</p>
+            </div>
+
+            <!-- Formulário com Confirmação em 3 Etapas -->
+            <form method="post" id="form-zerar" class="space-y-5">
+                {% csrf_token %}
+
+                <!-- Etapa 1: Checkbox de Confirmação -->
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" id="confirm-checkbox" required
+                           class="w-5 h-5 text-red-600 rounded focus:ring-red-500 border-red-300">
+                    <span class="text-sm font-medium text-gray-700">
+                        Eu entendo que <strong>todos os dados serão apagados</strong> e não há recuperação.
+                    </span>
+                </label>
+
+                <!-- Etapa 2: Campo de Confirmação por Texto -->
+                <div>
+                    <label for="confirm-text" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Digite <code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">APAGAR TUDO</code> para confirmar
+                    </label>
+                    <input type="text" id="confirm-text" autocomplete="off"
+                           class="w-full px-4 py-2.5 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm font-mono placeholder:text-red-400"
+                           placeholder="APAGAR TUDO">
+                    <p id="text-error" class="text-xs text-red-600 mt-1 hidden">Texto não corresponde.</p>
+                </div>
+
+                <!-- Etapa 3: Botões -->
+                <div class="flex gap-3 pt-4">
+                    <a href="{% url 'chamados:dashboard' %}"
+                       class="flex-1 px-5 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium text-center">
+                        Cancelar
+                    </a>
+                    <button type="submit"
+                            id="btn-submit"
+                            disabled
+                            class="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span id="btn-text">Apagar Tudo</span>
+                        <svg id="btn-spinner" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Rodapé -->
+            <p class="mt-6 text-xs text-center text-gray-500">
+                Última chance: <a href="{% url 'chamados:exportar_excel' %}" class="text-primary hover:underline">exporte os dados agora</a>.
+            </p>
+        </div>
     </div>
-
-    <div class="mt-5 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-md p-4">
-      <p class="text-sm text-red-700 dark:text-red-200">
-        Esta ação apagará <strong>TODOS</strong> os dados do banco de dados! Certifique-se de ter backup antes de continuar.
-      </p>
-    </div>
-
-    <form method="post" onsubmit="return confirmReset(event)" class="mt-6 flex flex-col sm:flex-row gap-3">
-      {% csrf_token %}
-      <button type="submit"
-              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-medium shadow-sm
-                     bg-red-600 hover:bg-red-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
-        <!-- pequeno ícone -->
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 6h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M10 11v6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M14 11v6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Sim, apagar tudo
-      </button>
-
-      <a href="{% url 'chamados:dashboard' %}"
-         class="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none">
-        Cancelar
-      </a>
-    </form>
-
-    <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">Recomendação: Exporte o arquivo em excel antes de continuar. Esta operação não pode ser desfeita.</p>
-  </div>
 </div>
 
 <script>
-  // Confirmação extra — exige que o usuário digite "CONFIRMAR".
-  function confirmReset(e){
-    // evita envio por teclas acidentais
-    e = e || window.event;
-    const answer = prompt('Esta ação apagará TODOS os dados. Para confirmar, digite CONFIRMAR (tudo em maiúsculas).');
-    if (answer !== 'CONFIRMAR') {
-      // opcional: mostrar feedback leve
-      alert('Operação cancelada — texto não correspondeu a "CONFIRMAR".');
-      return false;
+document.addEventListener('DOMContentLoaded', function() {
+    const checkbox = document.getElementById('confirm-checkbox');
+    const textInput = document.getElementById('confirm-text');
+    const textError = document.getElementById('text-error');
+    const btnSubmit = document.getElementById('btn-submit');
+    const btnText = document.getElementById('btn-text');
+    const btnSpinner = document.getElementById('btn-spinner');
+
+    // Habilita botão apenas se checkbox + texto correto
+    function checkConfirmation() {
+        const isChecked = checkbox.checked;
+        const isTextCorrect = textInput.value.trim() === 'APAGAR TUDO';
+
+        if (isChecked && isTextCorrect) {
+            btnSubmit.disabled = false;
+            textError.classList.add('hidden');
+        } else {
+            btnSubmit.disabled = true;
+            if (textInput.value && !isTextCorrect) {
+                textError.classList.remove('hidden');
+            } else {
+                textError.classList.add('hidden');
+            }
+        }
     }
-    return true; // permite enviar o form
-  }
+
+    checkbox.addEventListener('change', checkConfirmation);
+    textInput.addEventListener('input', checkConfirmation);
+
+    // Loading state
+    document.getElementById('form-zerar').addEventListener('submit', function() {
+        btnSubmit.disabled = true;
+        btnText.textContent = 'Apagando...';
+        btnSpinner.classList.remove('hidden');
+    });
+
+    // Cancelar com ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            window.location.href = "{% url 'chamados:dashboard' %}";
+        }
+    });
+});
 </script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.5s ease-out; }
+</style>
 {% endblock %}

@@ -1,218 +1,262 @@
 {% load static %}
 {% load custom_filters %}
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Chamados</title>
 
-    <!-- Tailwind -->
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS com configuração personalizada -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: '#2563eb',
+                        'primary-dark': '#1d4ed8',
+                        secondary: '#64748b',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    }
+                }
+            }
+        }
+    </script>
 
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <script>
         const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
+        const userPapel = "{{ request.user.papel|default:''|lower }}";
+        const usuarioNome = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
     </script>
     <script src="{% static 'chamados/scripts.js' %}"></script>
 </head>
 
-<body class="text-gray-800 min-h-screen flex flex-col">
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans">
 
 {% if user.is_authenticated %}
-<header class="w-full bg-white/90 backdrop-blur shadow px-6 py-4 flex items-center justify-between lg:hidden">
-    <h1 class="text-lg font-bold">📋 Sistema de Chamados</h1>
-    <button id="menu-toggle" class="p-2 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+<!-- Mobile Header -->
+<header class="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-md z-40 flex items-center justify-between p-4">
+    <h1 class="text-lg font-bold text-primary">Chamados</h1>
+    <button id="menu-toggle" class="p-2 rounded-lg hover:bg-gray-100 transition">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
     </button>
 </header>
 
-<div class="flex flex-1">
-    <!-- Sidebar -->
-    <aside id="sidebar"
-           class="fixed inset-y-0 left-0 w-64 bg-white/95 backdrop-blur shadow-lg transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col p-6 overflow-y-auto">
+<!-- Overlay Mobile -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden transition-opacity"></div>
 
-        <div class="mb-6 text-center">
-            <h3 class="text-lg font-bold mb-2">👋 Olá, {{ user.username.upper }}</h3>
-            <form method="post" action="{% url 'chamados:logout' %}">
-                {% csrf_token %}
-                <button type="submit" class="text-sm text-red-600 hover:underline bg-none border-none p-0 cursor-pointer">
-                    Sair
+<!-- Container Principal (flex-col para empurrar footer) -->
+<div class="flex flex-1 pt-16 lg:pt-0">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-white shadow-xl transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-50 flex flex-col overflow-y-auto">
+        <div class="p-6 border-b">
+            <div class="flex items-center justify-between mb-4">
+                <h1 class="text-xl font-bold text-primary">Sistema de Chamados</h1>
+                <button id="menu-toggle-close" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    {{ user.username|slice:":1"|upper }}
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-900">{{ user.get_full_name|default:user.username }}</p>
+                    <p class="text-xs text-secondary capitalize">{{ user.papel|default:"Usuário" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1">
+            {% if user.papel|lower != 'usuario' %}
+                <a href="{% url 'chamados:dashboard' %}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    <span>Dashboard</span>
+                </a>
+            {% endif %}
+
+            <a href="{% url 'chamados:chamados_ativos' %}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-primary/5 text-primary font-medium">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                <span>Sistema de Chamados</span>
+            </a>
+
+            {% if user.papel|lower == 'gestor' %}
+                <a href="{% url 'chamados:cadastrar_usuario' %}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                    <span>Cadastrar Usuário</span>
+                </a>
+            {% endif %}
+
+            {% if user.papel|lower == 'admin' %}
+                <div class="pt-4 mt-4 border-t">
+                    <p class="text-xs font-semibold text-secondary uppercase tracking-wider px-4 mb-2">Administração</p>
+                    <a href="{% url 'chamados:cadastrar_usuario' %}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H9v-1a4 4 0 014-4h4a4 4 0 014 4v1z"/></svg>
+                        <span>Cadastrar Usuários</span>
+                    </a>
+                    <a href="{% url 'chamados:gerenciar_usuarios' %}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+                        <span>Gerenciar Usuários</span>
+                    </a>
+                    <a href="{% url 'chamados:upload_excel' %}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                        <span>Upload Excel</span>
+                    </a>
+                    <a href="{% url 'chamados:exportar_excel' %}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Exportar Excel</span>
+                    </a>
+                </div>
+
+                <div class="pt-4 mt-4 border-t">
+                    <a href="{% url 'chamados:zerar_banco' %}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-red-50 text-danger font-medium hover:bg-red-100 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>Zerar Banco</span>
+                    </a>
+                </div>
+            {% endif %}
+        </nav>
+
+        <!-- Filtros -->
+        <div class="p-4 bg-gray-50 border-t">
+            <h3 class="font-semibold text-gray-700 mb-3 text-sm">Filtros</h3>
+            <form method="get" class="space-y-3">
+                {% for col, values in filters.items %}
+                <details class="group">
+                    <summary class="flex justify-between items-center cursor-pointer list-none py-2 px-3 rounded-lg hover:bg-white transition text-sm font-medium text-gray-700">
+                        {{ col|capfirst }}
+                        <svg class="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </summary>
+                    <div class="mt-2 ml-3 space-y-1 max-h-48 overflow-y-auto">
+                        {% for value in values %}
+                        <label class="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-gray-100 transition text-sm">
+                            <input type="checkbox" name="{{ col }}" value="{{ value }}"
+                                   {% if value in filters_selected|get_item:col %}checked{% endif %}
+                                   class="w-4 h-4 text-primary rounded focus:ring-primary">
+                            <span class="text-gray-700">{{ value }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endfor %}
+
+                <button type="submit" class="w-full mt-4 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition shadow-sm text-sm">
+                    Aplicar Filtros
                 </button>
             </form>
         </div>
 
-        <nav class="flex flex-col gap-2 text-sm font-medium mb-6">
-            {% if user.papel|lower != 'usuario' %}
-                <a href="{% url 'chamados:dashboard' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📊 Dashboard</a>
-            {% endif %}
+        <!-- Imagem no rodapé do sidebar -->
+        <div class="mt-auto pt-4 border-t border-gray-200 p-4">
+            <img src="{% static 'chamados/img/invent_foot.png' %}" alt="Invent" class="w-full rounded-lg object-contain">
+        </div>
 
-            <a href="{% url 'chamados:chamados_ativos' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📂 Sistema de Chamados</a>
-
-            {% if user.papel|lower == 'gestor' %}
-                <a href="{% url 'chamados:cadastrar_usuario' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">👤 Cadastrar Usuário</a>
-            {% endif %}
-
-            {% if user.papel|lower == 'admin' %}
-                <a href="{% url 'chamados:cadastrar_usuario' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">👥 Cadastrar Usuários</a>
-                <a href="{% url 'chamados:gerenciar_usuarios' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">⚙️ Gerenciar Usuários</a>
-                <a href="{% url 'chamados:upload_excel' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📤 Upload Excel</a>
-                <a href="{% url 'chamados:exportar_excel' %}" class="px-3 py-2 rounded-lg hover:bg-gray-100">📥 Exportar Excel</a>
-                <hr class="my-3">
-                <a href="{% url 'chamados:zerar_banco' %}" class="px-3 py-2 rounded-lg bg-red-200 text-red-600 hover:bg-red-300">
-                    ⚠️ Zerar Banco de Dados
-                </a>
-            {% endif %}
-        </nav>
-
-        <!-- Filtros (colapsáveis) -->
-<form method="get" class="flex flex-col gap-2">
-
-    {% for col, values in filters.items %}
-    <div class="border border-gray-300 rounded-md bg-white">
-        <!-- Botão do cabeçalho do filtro -->
-        <button
-            type="button"
-            class="w-full flex justify-between items-center px-3 py-2 font-medium text-gray-700 hover:bg-gray-100 focus:outline-none filter-toggle"
-        >
-            {{ col|capfirst }}
-            <svg
-                class="w-4 h-4 transition-transform transform"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-            >
-                <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 9l-7 7-7-7"
-                />
-            </svg>
-        </button>
-
-        <!-- Lista de opções -->
-        <ul class="flex flex-col gap-1 px-3 py-2 max-h-0 overflow-hidden transition-all duration-300">
-            {% for value in values %}
-            <li>
-                <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
-                    <input
-                        type="checkbox"
-                        name="{{ col }}"
-                        value="{{ value }}"
-                        {% if value in filters_selected|get_item:col %}checked{% endif %}
-                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    >
-                    <span class="text-gray-800">{{ value }}</span>
-                </label>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endfor %}
-
-    <!-- Botão de aplicar filtros -->
-    <button
-        type="submit"
-        class="mt-4 w-full h-10 bg-blue-600 text-white rounded-md font-bold hover:bg-blue-700 transition-colors"
-    >
-        Filtrar
-    </button>
-
-</form>
-
-<script>
-// ---------------------------
-// Filtros colapsáveis
-// ---------------------------
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".filter-toggle").forEach(button => {
-    button.addEventListener("click", () => {
-      const list = button.nextElementSibling;
-      const icon = button.querySelector("svg");
-
-      const isOpen = list.style.maxHeight && list.style.maxHeight !== "0px";
-
-      if (isOpen) {
-        // Fecha o filtro
-        list.style.maxHeight = "0";
-        icon.classList.remove("rotate-180");
-      } else {
-        // Abre o filtro
-        list.style.maxHeight = `${list.scrollHeight}px`;
-        icon.classList.add("rotate-180");
-      }
-    });
-  });
-});
-</script>
-
-
-
-        <div class="mt-auto pt-4 border-t border-gray-200">
-            <img src="{% static 'chamados/img/invent_foot.png' %}" alt="Footer" class="w-full rounded-lg">
+        <!-- Logout -->
+        <div class="p-4 border-t">
+            <form method="post" action="{% url 'chamados:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="w-full text-left text-sm text-secondary hover:text-danger transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Sair
+                </button>
+            </form>
         </div>
     </aside>
 
-    <main class="flex-1 p-6 lg:ml-64 bg-white/70 rounded-tl-3xl shadow-inner backdrop-blur">
-        {% if messages %}
-            <div class="space-y-3 mb-6">
-                {% for message in messages %}
-                    <div class="
-                        px-4 py-3 rounded-lg shadow text-sm font-medium
-                        {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}
-                        {% if message.tags == 'success' %}bg-green-100 text-green-800{% endif %}
-                        {% if message.tags == 'error' %}bg-red-100 text-red-800{% endif %}
-                        {% if message.tags == 'info' %}bg-blue-100 text-blue-800{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
+    <!-- Main Content -->
+    <main class="flex-1 p-6 lg:ml-72 transition-all duration-300">
+        <div class="max-w-7xl mx-auto">
+            {% if messages %}
+                <div class="space-y-3 mb-6">
+                    {% for message in messages %}
+                        <div class="flex items-center gap-3 p-4 rounded-lg shadow-soft text-sm font-medium border
+                            {% if message.tags == 'success' %}bg-green-50 text-success border-green-200{% endif %}
+                            {% if message.tags == 'warning' %}bg-yellow-50 text-warning border-yellow-200{% endif %}
+                            {% if message.tags == 'error' %}bg-red-50 text-danger border-red-200{% endif %}
+                            {% if message.tags == 'info' %}bg-blue-50 text-primary border-blue-200{% endif %}">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
 
-        {% block content %}{% endblock %}
+            {% block content %}{% endblock %}
+        </div>
     </main>
 </div>
-{% endif %}
 
-<!-- BOTÃO FLUTUANTE DO CHAT -->
+<!-- Chat Button -->
 <button id="abrir-chat"
-        class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 hover:scale-110 transition transform z-50 animate-bounce">
-    💬 Suporte
-    <span id="chat-badge" class="absolute -top-1 -right-1 bg-red-600 text-xs text-white rounded-full px-1 hidden">0</span>
+        class="fixed bottom-6 right-6 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-dark hover:shadow-xl transition-all duration-200 z-50 group">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+    </svg>
+    <span class="absolute -top-1 -right-1 bg-danger text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+        <span id="chat-badge">0</span>
+    </span>
 </button>
 
-<!-- MODAL DO CHAT -->
-<div id="chat-modal"
-     class="fixed inset-0 bg-black bg-opacity-40 flex items-end justify-end hidden z-50 transition-opacity duration-300 ease-in-out">
-    <div id="chat-content"
-         class="bg-white w-96 h-96 rounded-3xl shadow-lg flex flex-col p-3 m-4 transform scale-95 opacity-0 transition-all duration-300 ease-in-out">
-        <div class="flex justify-between items-center border-b pb-2 mb-2">
-            <h3 class="font-semibold text-gray-700">💬 Suporte</h3>
-            <button id="fechar-chat" class="text-gray-400 hover:text-gray-600">✖</button>
+<!-- Chat Modal -->
+<div id="chat-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-end hidden z-50 p-4 transition-opacity">
+    <div id="chat-content" class="bg-white w-full max-w-sm h-96 rounded-2xl shadow-2xl flex flex-col overflow-hidden transform transition-all duration-300 scale-95 opacity-0">
+        <div class="bg-primary text-white p-4 rounded-t-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-semibold">Suporte</h3>
+                <button id="fechar-chat" class="text-white/80 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
         </div>
-        <div id="chat-messages" class="flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50"></div>
-        <div class="flex gap-2">
-            <input type="text" id="chat-input" class="border flex-1 p-2 rounded focus:ring focus:ring-blue-300 text-sm"
-                   placeholder="Digite sua mensagem...">
-            <button id="chat-send" class="bg-blue-500 text-white px-3 rounded hover:bg-blue-600 transition">➤</button>
+        <div id="chat-messages" class="flex-1 p-4 space-y-3 overflow-y-auto bg-gray-50 text-sm"></div>
+        <div class="p-3 border-t flex gap-2">
+            <input type="text" id="chat-input" class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Digite sua mensagem...">
+            <button id="chat-send" class="bg-primary text-white p-2 rounded-lg hover:bg-primary-dark transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                </svg>
+            </button>
         </div>
     </div>
 </div>
-</body>
 
+
+
+{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const usuarioNome = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
     const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
-    const userPapel = "{{ request.user.papel|default:''|lower }}"; // 👈 adicionado para detectar gestores
+    const userPapel = "{{ request.user.papel|default:''|lower }}";
 
-    // ---- VERIFICAR SE OS ELEMENTOS EXISTEM ----
+    // Elementos do DOM
     const abrirChatBtn = document.getElementById('abrir-chat');
     const fecharChatBtn = document.getElementById('fechar-chat');
     const chatModal = document.getElementById('chat-modal');
@@ -223,281 +267,269 @@ document.addEventListener('DOMContentLoaded', function() {
     const badge = document.getElementById('chat-badge');
 
     if (!abrirChatBtn || !fecharChatBtn || !chatModal || !chatContent || !chatMessages || !chatInput || !chatSend || !badge) {
-        console.error("❌ Chat não carregou: algum elemento do DOM não foi encontrado");
+        console.error("Chat não carregou: elemento ausente");
         return;
     }
 
-    // ---- ABRIR CHAT ----
+    // Abrir/Fechar Chat
     abrirChatBtn.addEventListener('click', () => {
         badge.textContent = "0";
         badge.classList.add('hidden');
         chatModal.classList.remove('hidden');
         setTimeout(() => chatContent.classList.remove('scale-95', 'opacity-0'), 10);
+        chatInput.focus();
     });
 
-    // ---- FECHAR CHAT ----
-    fecharChatBtn.addEventListener('click', () => fecharChat());
+    fecharChatBtn.addEventListener('click', fecharChat);
     function fecharChat() {
         chatContent.classList.add('scale-95', 'opacity-0');
         setTimeout(() => chatModal.classList.add('hidden'), 200);
     }
     chatModal.addEventListener('click', e => { if (e.target === chatModal) fecharChat(); });
 
-    // ---- WEBSOCKET ----
+    // WebSocket
     const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
     if (!window.chatSocket) {
         window.chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/{{ request.user.username }}/`);
 
         window.chatSocket.onopen = () => {
-            console.log(`✅ ${isAdmin ? "Admin" : "Usuário"} conectado ao WebSocket`);
+            console.log(`${isAdmin ? "Admin/Gestor" : "Usuário"} conectado ao chat`);
 
-            // 💬 Enviar saudação automática com delay
             if (isAdmin || userPapel === "gestor") {
                 setTimeout(() => {
-                    const nomeFormatado = usuarioNome ? usuarioNome.split(" ")[0] : "usuário";
-                    window.chatSocket.send(JSON.stringify({ mensagem: mensagemInicial, admin: true }));
-                    console.log("👋 Saudação enviada após 2s");
+                    const nome = usuarioNome.split(" ")[0];
+                    window.chatSocket.send(JSON.stringify({
+                        mensagem: `Olá! Sou o ${nome}, em que posso ajudar?`,
+                        admin: true
+                    }));
                 }, 2000);
             }
         };
-
-        window.chatSocket.onerror = err => console.error("❌ Erro WebSocket:", err);
     }
 
-    // ---- ADMIN UI: abas por usuário ----
+    // ABAS PARA ADMIN
     let abas = {};
     let tabsContainer = null;
     if (isAdmin) {
         tabsContainer = document.createElement('div');
         tabsContainer.id = 'chat-tabs';
-        tabsContainer.className = 'flex gap-2 mb-2 overflow-x-auto';
+        tabsContainer.className = 'flex gap-2 mb-3 overflow-x-auto pb-2 border-b border-gray-200';
         chatContent.insertBefore(tabsContainer, chatMessages);
     }
 
     function criarOuAtivarAba(usuario) {
         if (abas[usuario]) { ativarAba(usuario); return abas[usuario].area; }
+
         const tabBtn = document.createElement('button');
-        tabBtn.className = 'px-3 py-1 bg-gray-200 rounded-full text-sm hover:bg-blue-200 transition';
+        tabBtn.className = 'px-4 py-2 bg-gray-100 hover:bg-primary hover:text-white rounded-xl text-sm font-medium transition whitespace-nowrap';
         tabBtn.textContent = usuario;
-        const area = document.createElement('div');
-        area.className = 'flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50';
-        area.dataset.usuario = usuario;
         tabBtn.onclick = () => ativarAba(usuario);
+
+        const area = document.createElement('div');
+        area.className = 'hidden flex-1 overflow-y-auto max-h-96 bg-gray-50 rounded-xl p-4';
+        area.dataset.usuario = usuario;
+
         tabsContainer.appendChild(tabBtn);
-        Object.values(abas).forEach(a => { if (a.area.parentNode) a.area.classList.add('hidden'); });
-        if (chatMessages.parentNode) chatMessages.replaceWith(area);
+        chatContent.insertBefore(area, chatInput.parentNode);
         abas[usuario] = { btn: tabBtn, area: area };
+        ativarAba(usuario);
         return area;
     }
 
     function ativarAba(usuario) {
-        Object.values(abas).forEach(a => a.area.classList.add('hidden'));
-        const target = abas[usuario];
-        if (!target) return;
-        if (!target.area.parentNode) {
-            const atual = document.querySelector('#chat-content > .flex-1');
-            if (atual) atual.replaceWith(target.area);
-            else chatContent.insertBefore(target.area, chatInput);
+        Object.values(abas).forEach(a => {
+            a.area.classList.add('hidden');
+            a.btn.classList.remove('bg-primary', 'text-white');
+            a.btn.classList.add('bg-gray-100');
+        });
+        const tab = abas[usuario];
+        if (tab) {
+            tab.area.classList.remove('hidden');
+            tab.btn.classList.add('bg-primary', 'text-white');
+            tab.btn.classList.remove('bg-gray-100');
         }
-        target.area.classList.remove('hidden');
     }
 
-    // ---- FUNÇÕES DE ALERTA (APENAS PARA ADMINS) ----
-    function incrementarBadge() {
-        const valor = parseInt(badge.textContent || "0") + 1;
-        badge.textContent = valor;
-        badge.classList.remove('hidden');
-    }
-
+    // MODAL DE ALERTA (NOVA VERSÃO - LINDONA)
     function exibirModalAlerta(remetente, mensagem) {
-        if (!isAdmin) return;
-        if (document.getElementById('chat-alert-modal')) return;
+        if (!isAdmin || document.getElementById('chat-alert-modal')) return;
 
         const overlay = document.createElement('div');
         overlay.id = 'chat-alert-modal';
-        overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm';
+        overlay.className = 'fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4';
 
-        const modal = document.createElement('div');
-        modal.className = `
-            bg-white/95 backdrop-blur-md
-            p-4 rounded-2xl shadow-lg
-            max-w-sm w-full
-            text-center
-            transform transition-all duration-300 scale-95 opacity-0
+        overlay.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 max-w-sm w-full p-6 transform transition-all duration-300 scale-95 opacity-0 translate-y-4 backdrop-blur-xl">
+                <div class="text-center space-y-5">
+                    <div class="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center animate-pulse">
+                        <svg class="w-9 h-9 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800">Nova mensagem!</h3>
+                        <p class="text-sm text-gray-500 mt-1">Alguém precisa da sua atenção</p>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+                        <p class="text-xs text-gray-600 font-medium">De:</p>
+                        <p class="text-lg font-semibold text-primary truncate">${remetente}</p>
+                    </div>
+
+                    <div class="bg-blue-50/60 rounded-xl px-4 py-3 border border-blue-200">
+                        <p class="text-sm text-gray-700 italic leading-relaxed truncate">"${mensagem}"</p>
+                    </div>
+
+                    <div class="flex gap-3 justify-center pt-2">
+                        <button type="button" onclick="fecharModalAlerta()"
+                                class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition font-medium text-sm">
+                            Ignorar
+                        </button>
+                        <button type="button" onclick="abrirChatEAba('${remetente}')"
+                                class="px-6 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-dark transition font-medium text-sm shadow-lg flex items-center gap-2">
+                            Abrir chat
+                        </button>
+                    </div>
+                </div>
+            </div>
         `;
 
-        setTimeout(() => {
-            modal.classList.remove('scale-90', 'opacity-0');
-            modal.classList.add('scale-100', 'opacity-100');
-        }, 10);
+        requestAnimationFrame(() => {
+            overlay.querySelector('div').classList.remove('scale-95', 'opacity-0', 'translate-y-4');
+        });
 
-        const title = document.createElement('h3');
-        title.className = 'text-xl font-semibold mb-2 text-red-500 flex items-center justify-center gap-1';
-        title.innerHTML = '🚨 Nova mensagem';
-
-        const sender = document.createElement('p');
-        sender.className = 'text-gray-600 text-sm mb-1';
-        sender.textContent = `De: ${remetente}`;
-
-        const preview = document.createElement('p');
-        preview.className = 'text-gray-700 text-sm italic mb-4 truncate';
-        preview.textContent = `"${mensagem}"`;
-
-        const okButton = document.createElement('button');
-        okButton.textContent = 'Abrir chat';
-        okButton.className = `
-            px-4 py-1.5 bg-blue-600 text-white text-sm font-medium
-            rounded-lg shadow hover:bg-blue-700 transition
-        `;
-        okButton.onclick = () => {
-            overlay.remove();
-            chatModal.classList.remove('hidden');
-            chatInput.focus();
-            criarOuAtivarAba(remetente);
-            ativarAba(remetente);
-        };
-
-        modal.appendChild(title);
-        modal.appendChild(sender);
-        modal.appendChild(preview);
-        modal.appendChild(okButton);
-        overlay.appendChild(modal);
         document.body.appendChild(overlay);
+
+        // Fechar com ESC ou clique fora
+        const closeHandler = (e) => {
+            if (e.key === 'Escape' || e.target === overlay) fecharModalAlerta();
+        };
+        overlay.addEventListener('click', closeHandler);
+        document.addEventListener('keydown', closeHandler);
     }
 
+    window.fecharModalAlerta = function() {
+        const overlay = document.getElementById('chat-alert-modal');
+        if (!overlay) return;
+        const modal = overlay.querySelector('div');
+        modal.classList.add('scale-95', 'opacity-0', 'translate-y-4');
+        setTimeout(() => overlay.remove(), 300);
+    };
+
+    window.abrirChatEAba = function(usuario) {
+        fecharModalAlerta();
+        abrirChatBtn.click();
+        setTimeout(() => {
+            criarOuAtivarAba(usuario);
+            ativarAba(usuario);
+        }, 100);
+    };
+
+    // Som de notificação (WhatsApp style)
     function tocarSom() {
         if (!isAdmin) return;
-        const audio = new Audio('https://actions.google.com/sounds/v1/emergency/beeper_emergency_call.ogg');
+        const audio = new Audio('https://cdn.jsdelivr.net/gh/napstr/mui@master/tone.mp3');
         audio.play().catch(() => {});
     }
 
-    function notificarSistema(remetente, mensagem) {
-        if (!isAdmin) return;
-        if (document.hidden && "Notification" in window && Notification.permission === "granted") {
-            const notification = new Notification("💬 Nova mensagem de usuário!", {
-                body: `${remetente}: ${mensagem}`,
-                icon: "https://cdn-icons-png.flaticon.com/512/10313/10313090.png",
-            });
-            notification.onclick = () => {
-                window.focus();
-                chatModal.classList.remove('hidden');
-                chatInput.focus();
-                notification.close();
-                criarOuAtivarAba(remetente);
-                ativarAba(remetente);
-            };
-        }
+    // Badge + Notificações
+    function incrementarBadge() {
+        const valor = (parseInt(badge.textContent) || 0) + 1;
+        badge.textContent = valor;
+        badge.classList.remove('hidden');
+        badge.classList.add('animate-ping-once');
     }
 
-    let tituloOriginal = document.title;
-    let alertaAtivo = false;
-    function piscarTitulo(msg) {
-        if (!isAdmin) return;
-        if (alertaAtivo || !document.hidden) return;
-        alertaAtivo = true;
-        let alternar = true;
-        const intervalo = setInterval(() => {
-            document.title = alternar ? `💬 Nova: ${msg}` : tituloOriginal;
-            alternar = !alternar;
-            if (!document.hidden) {
-                clearInterval(intervalo);
-                document.title = tituloOriginal;
-                alertaAtivo = false;
-            }
-        }, 1000);
-    }
-
-    if (isAdmin && "Notification" in window && Notification.permission === "default") {
-        Notification.requestPermission().then(result => console.log("Permissão de notificação:", result));
-    }
-
-    // ---- RECEBIMENTO DE MENSAGENS ----
+    // Receber mensagens
     window.chatSocket.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        const remetente = (data.remetente?.trim() || data.usuario_nome?.trim() || "Usuário");
+        const remetente = (data.remetente || data.usuario_nome || "Usuário").trim();
 
         if (!isAdmin) {
-            if (!data.admin && data.remetente === usuarioNome) return;
-            const destinatario = data.usuario_nome || data.destinatario_username;
-            if (data.admin && (data.usuario_nome || '').toLowerCase() !== usuarioNome.toLowerCase()) return;
+            // Usuário comum
+            if (data.admin && data.usuario_nome?.toLowerCase() !== usuarioNome.toLowerCase()) return;
 
             const msgEl = document.createElement('div');
-            msgEl.textContent = `${remetente}: ${data.mensagem}`;
+            msgEl.textContent = data.admin ? `Suporte: ${data.mensagem}` : `${usuarioNome}: ${data.mensagem}`;
             msgEl.className = data.admin
-                ? "mb-1 text-sm text-blue-600"
-                : "mb-1 text-sm text-gray-800";
+                ? "mb-2 p-3 bg-blue-50 text-blue-800 rounded-xl rounded-tl-none text-sm"
+                : "mb-2 p-3 bg-gray-100 text-gray-800 rounded-xl rounded-tr-none text-sm ml-auto max-w-xs";
             chatMessages.appendChild(msgEl);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             return;
         }
 
+        // Admin
         if (!data.admin) {
             const area = criarOuAtivarAba(remetente);
             const msgEl = document.createElement('div');
-            msgEl.textContent = `${remetente}: ${data.mensagem}`;
-            msgEl.className = "mb-1 text-sm text-gray-800";
+            msgEl.innerHTML = `<span class="text-xs text-gray-500">${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</span><br>
+                               <span class="font-medium">${remetente}:</span> ${data.mensagem}`;
+            msgEl.className = "mb-3 p-3 bg-white border border-gray-200 rounded-xl rounded-tl-none text-sm shadow-sm";
             area.appendChild(msgEl);
             area.scrollTop = area.scrollHeight;
 
-            const chatFechado = chatModal.classList.contains('hidden');
-            if (data.alert && chatFechado) {
+            if (data.alert && chatModal.classList.contains('hidden')) {
                 incrementarBadge();
                 exibirModalAlerta(remetente, data.mensagem);
                 tocarSom();
-                notificarSistema(remetente, data.mensagem);
-                piscarTitulo(data.mensagem);
             }
-            return;
         }
 
         if (data.admin) {
-            const destino = data.usuario_nome?.trim() || "Você";
-            const area = criarOuAtivarAba(destino);
-            if (data.remetente !== usuarioNome) {
-                const msgEl = document.createElement('div');
-                msgEl.textContent = `Você: ${data.mensagem}`;
-                msgEl.className = "mb-1 text-sm text-blue-600 text-right";
-                area.appendChild(msgEl);
-                area.scrollTop = area.scrollHeight;
-            }
+            const destino = data.usuario_nome || "Você";
+            const area = abas[destino]?.area || chatMessages;
+            const msgEl = document.createElement('div');
+            msgEl.innerHTML = `<span class="text-xs text-gray-500">${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</span><br>
+                               <span class="font-medium text-blue-600">Você:</span> ${data.mensagem}`;
+            msgEl.className = "mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl rounded-tr-none text-sm shadow-sm ml-auto max-w-xs";
+            area.appendChild(msgEl);
+            area.scrollTop = area.scrollHeight;
         }
     };
 
-    // ---- ENVIO DE MENSAGEM ----
+    // Enviar mensagem
     function enviarMensagem() {
         const mensagem = chatInput.value.trim();
         if (!mensagem) return;
 
         if (!isAdmin) {
-            const payload = { mensagem: mensagem, admin: false };
-            window.chatSocket.send(JSON.stringify(payload));
-            const msgEl = document.createElement('div');
-            msgEl.textContent = `${usuarioNome}: ${mensagem}`;
-            msgEl.className = "mb-1 text-sm text-gray-800 text-right";
-            chatMessages.appendChild(msgEl);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            window.chatSocket.send(JSON.stringify({ mensagem, admin: false }));
             chatInput.value = '';
             return;
         }
 
         const ativo = Object.values(abas).find(a => !a.area.classList.contains('hidden'));
-        if (!ativo) { alert('Selecione um usuário (aba) para enviar a mensagem.'); return; }
+        if (!ativo) { alert('Selecione um usuário para responder'); return; }
+
         const destinatario = ativo.area.dataset.usuario;
-        const payload = { mensagem: mensagem, admin: true, destinatario_username: destinatario };
-        window.chatSocket.send(JSON.stringify(payload));
-
-        const msgEl = document.createElement('div');
-        msgEl.textContent = `Você: ${mensagem}`;
-        msgEl.className = "mb-1 text-sm text-blue-600 text-right";
-        ativo.area.appendChild(msgEl);
-        ativo.area.scrollTop = ativo.area.scrollHeight;
-
+        window.chatSocket.send(JSON.stringify({
+            mensagem,
+            admin: true,
+            destinatario_username: destinatario
+        }));
         chatInput.value = '';
     }
 
     chatSend.addEventListener('click', enviarMensagem);
-    chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensagem(); });
+    chatInput.addEventListener('keypress', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensagem(); } });
 });
 </script>
 
+<!-- Animação do badge -->
+<style>
+@keyframes ping-once {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+.animate-ping-once {
+    animation: ping-once 0.4s ease-out;
+}
+</style>
+
+
+</body>
 </html>

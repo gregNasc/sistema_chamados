@@ -1,14 +1,179 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block content %}
-<h1>Finalizar Chamado {{ chamado.id }}</h1>
-<form method="post">
-    {% csrf_token %}
-    <label>Deseja acrescentar uma observação?</label>
-    <select name="adicionar_obs" onchange="toggleObservacao(this)">
-        <option value="Não">Não</option>
-        <option value="Sim">Sim</option>
-    </select>
-    <textarea name="observacao" id="observacao" style="display:none"></textarea>
-    <button type="submit">Confirmar Finalização</button>
-</form>
+<div class="flex items-center justify-center min-h-[70vh] bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div class="w-full max-w-md">
+        <div class="bg-white rounded-2xl shadow-soft p-8">
+
+            <!-- Cabeçalho -->
+            <div class="flex items-center justify-between mb-6">
+                <a href="{% url 'chamados:sistema_chamados' %}"
+                   class="group inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 hover:text-primary transition">
+                    <svg class="w-4 h-4 text-gray-500 group-hover:text-primary group-hover:-translate-x-0.5 transition-transform"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Voltar
+                </a>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-warning rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">Finalizar Chamado</h2>
+                        <p class="text-xs text-secondary">#{{ chamado.id }} • {{ chamado.loja }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mensagens -->
+            {% if messages %}
+                <div class="space-y-2 mb-6">
+                    {% for message in messages %}
+                        <div class="flex items-center gap-3 p-4 rounded-xl shadow-soft text-sm font-medium border animate-fade-in
+                            {% if message.tags == 'success' %}bg-green-50 text-success border-green-200{% endif %}
+                            {% if message.tags == 'error' %}bg-red-50 text-danger border-red-200{% endif %}
+                            {% if message.tags == 'warning' %}bg-yellow-50 text-warning border-yellow-200{% endif %}">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+                <script>
+                    setTimeout(() => {
+                        document.querySelectorAll('.animate-fade-in').forEach(el => {
+                            el.style.transition = 'opacity 0.5s';
+                            el.style.opacity = '0';
+                            setTimeout(() => el.remove(), 500);
+                        });
+                    }, 4000);
+                </script>
+            {% endif %}
+
+            <!-- Formulário -->
+            <form method="post" id="form-finalizar" class="space-y-5">
+                {% csrf_token %}
+
+                <!-- Observação -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Deseja acrescentar uma observação?
+                    </label>
+                    <select name="adicionar_obs" onchange="toggleObservacao(this)"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+                        <option value="Não">Não</option>
+                        <option value="Sim">Sim</option>
+                    </select>
+                </div>
+
+                <div id="div-observacao" style="display:none;">
+                    <label for="observacao" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Observação
+                    </label>
+                    <textarea name="observacao" id="observacao" rows="3"
+                              placeholder="Descreva o que foi feito, solução aplicada, etc."
+                              class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm resize-none"></textarea>
+                </div>
+
+                <!-- Tempo Manual -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Definir tempo manualmente?
+                    </label>
+                    <select name="usar_tempo_manual" onchange="toggleTempoManual(this)"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+                        <option value="Não">Não (usar automático)</option>
+                        <option value="Sim">Sim</option>
+                    </select>
+                </div>
+
+                <div id="div-tempo-manual" style="display:none;">
+                    <label for="tempo_manual" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Tempo (minutos)
+                    </label>
+                    <input type="number" name="tempo_manual" id="tempo_manual" min="1" max="1440"
+                           placeholder="ex: 30"
+                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+                </div>
+
+                <!-- Botões -->
+                <div class="flex gap-3 pt-4">
+                    <a href="{% url 'chamados:sistema_chamados' %}"
+                       class="flex-1 px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium text-center">
+                        Cancelar
+                    </a>
+                    <button type="submit"
+                            id="btn-submit"
+                            class="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 bg-success text-white rounded-lg hover:bg-green-600 transition shadow-sm font-medium text-sm disabled:opacity-70 disabled:cursor-not-allowed">
+                        <span id="btn-text">Finalizar Chamado</span>
+                        <svg id="btn-spinner" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleObservacao(select) {
+    const div = document.getElementById('div-observacao');
+    div.style.display = select.value === 'Sim' ? 'block' : 'none';
+    if (select.value === 'Não') {
+        document.getElementById('observacao').value = '';
+    }
+}
+
+function toggleTempoManual(select) {
+    const div = document.getElementById('div-tempo-manual');
+    const input = document.getElementById('tempo_manual');
+    div.style.display = select.value === 'Sim' ? 'block' : 'none';
+    if (select.value === 'Não') {
+        input.value = '';
+    }
+}
+
+// Validação antes do envio
+document.getElementById('form-finalizar').addEventListener('submit', function(e) {
+    const usarTempo = document.querySelector('[name="usar_tempo_manual"]').value;
+    const tempoInput = document.getElementById('tempo_manual');
+
+    if (usarTempo === 'Sim' && (!tempoInput.value || tempoInput.value < 1)) {
+        e.preventDefault();
+        alert('Por favor, informe um tempo válido (mínimo 1 minuto).');
+        tempoInput.focus();
+        return;
+    }
+
+    // Loading state
+    const btn = document.getElementById('btn-submit');
+    const text = document.getElementById('btn-text');
+    const spinner = document.getElementById('btn-spinner');
+    btn.disabled = true;
+    text.textContent = 'Finalizando...';
+    spinner.classList.remove('hidden');
+});
+
+// Fechar com ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        window.location.href = "{% url 'chamados:sistema_chamados' %}";
+    }
+});
+</script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+</style>
 {% endblock %}

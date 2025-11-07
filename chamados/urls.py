@@ -42,6 +42,8 @@ urlpatterns = [
     # Dashboard
     # ------------------------------
     path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('dashboard_admin/filtrar/', views.filtrar_dashboard, name='filtrar_dashboard'),
+
 
     # ------------------------------
     # Zeragem do banco (apenas admin)

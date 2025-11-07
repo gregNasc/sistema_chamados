@@ -1,6 +1,6 @@
 import matplotlib
 matplotlib.use("Agg")  # backend sem GUI
-
+import matplotlib.patheffects as path_effects
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -25,7 +25,7 @@ import io
 import base64
 import os
 import matplotlib.ticker as mticker
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import pandas as pd
 from django.contrib import messages
 from django.shortcuts import render, redirect
@@ -34,6 +34,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from .models import CustomUser
+from matplotlib.patheffects import withStroke
+
 # ------------------------------
 # Funções auxiliares
 # ------------------------------
@@ -156,13 +158,25 @@ def sistema_chamados_view(request):
     # ------------------------------
     # Filtro por data
     # ------------------------------
-    data_str = request.GET.get('data', '')
-    data_filtro = None
+    data_str = request.GET.get('data')
     if data_str:
         try:
-            data_filtro = datetime.strptime(data_str, "%Y-%m-%d").date()
+            data_selecionada = datetime.strptime(data_str, '%Y-%m-%d').date()
         except ValueError:
-            messages.warning(request, "Data inválida. Mostrando todos os registros.")
+            data_selecionada = timezone.now().date()
+    else:
+        data_selecionada = timezone.now().date()
+
+    # Filtrar chamados pela data
+    chamados = Chamado.objects.filter(abertura__date=data_selecionada, status='Aberto')
+
+    context = {
+        'data_selecionada': data_selecionada.strftime('%Y-%m-%d'),  # ← STRING PARA O INPUT
+        'data_selecionada_obj': data_selecionada,  # ← OBJETO PARA FILTROS
+        'chamados': chamados,
+        # ... outros dados
+    }
+    return render(request, 'chamados/sistema_chamados.html', context)
 
     # ------------------------------
     # Regional, Loja e Líder selecionados
@@ -454,43 +468,82 @@ def lider_por_loja(request):
 # ------------------------------
 # Dashboard
 # ------------------------------
+def gerar_grafico_pie(df, coluna, titulo, icone="ChartPie"):
+    if coluna not in df or df[coluna].empty:
+        return None
 
-def gerar_grafico_pie(df, coluna, titulo):
-    if coluna in df and not df[coluna].empty:
-        df_count = df[coluna].value_counts()
-        top = df_count.head(5)
-        outros = df_count.iloc[5:].sum()
-        if outros > 0:
-            top["Outros"] = outros
-        fig, ax = plt.subplots(figsize=(5, 5))
-        ax.pie(
-            top.values,
-            labels=top.index,
-            autopct=lambda p: f'{p:.1f}%' if p > 3 else '',
-            startangle=90,
-            colors=sns.color_palette("Set2", len(top)),
-            wedgeprops={"edgecolor": "white"}
-        )
-        ax.set_title(titulo, fontsize=13, weight="bold")
-        return imagem_para_base64(fig)
-    return None
+    df_count = df[coluna].value_counts()
+    top = df_count.head(5)
+    outros = df_count.iloc[5:].sum()
+    if outros > 0:
+        top = top.copy()
+        top["Outros"] = outros
 
-def gerar_grafico_bar(df, coluna, titulo):
-    if coluna in df and not df[coluna].empty:
-        df_count = df[coluna].value_counts().head(10).sort_values()
-        fig, ax = plt.subplots(figsize=(7, 4))
-        bars = ax.barh(df_count.index, df_count.values, color=sns.color_palette("Set2", len(df_count)))
-        ax.set_xlabel("Quantidade")
-        ax.set_title(titulo, fontsize=13, weight="bold")
+    colors = sns.color_palette("husl", len(top))
 
-        ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
+    fig, ax = plt.subplots(figsize=(6, 6), facecolor='white')
+    wedges, texts, autotexts = ax.pie(
+        top.values,
+        labels=top.index,
+        autopct=lambda p: f'{p:.1f}%' if p > 3 else '',
+        startangle=90,
+        colors=colors,
+        wedgeprops=dict(width=0.4, edgecolor='white', linewidth=2),
+        textprops=dict(color="black", fontsize=9, weight='medium')
+    )
 
-        for bar in bars:
-            width = bar.get_width()
-            ax.text(width + 0, bar.get_y() + bar.get_height()/2, str(int(width)), va='center')
-        plt.tight_layout()
-        return imagem_para_base64(fig)
-    return None
+    # Estiliza % com fundo de contraste
+    for autotext in autotexts:
+        if autotext.get_text():
+            autotext.set_color('white')
+            autotext.set_fontweight('bold')
+            autotext.set_fontsize(9)
+            autotext.set_path_effects([
+                path_effects.Stroke(linewidth=2, foreground='black'),
+                path_effects.Normal()
+            ])
+
+    ax.set_title(f"{titulo}", fontsize=14, weight='bold', pad=20, loc='center')
+
+    fig.patch.set_facecolor('#f8fafc')
+    ax.set_facecolor('#f8fafc')
+
+    plt.tight_layout()
+    return imagem_para_base64(fig)
+
+def gerar_grafico_bar(df, coluna, titulo, icone="ChartBar"):
+    if coluna not in df or df[coluna].empty:
+        return None
+
+    df_count = df[coluna].value_counts().head(10).sort_values()
+    colors = sns.color_palette("viridis", len(df_count))
+
+    fig, ax = plt.subplots(figsize=(8, 5), facecolor='white')
+
+    bars = ax.barh(df_count.index, df_count.values, color=colors, height=0.7, edgecolor='white', linewidth=1)
+
+    ax.set_xlabel("Quantidade", fontsize=11, weight='600')
+    ax.set_title(titulo, fontsize=14, weight='bold', pad=20)
+
+    # Grid suave
+    ax.grid(axis='x', alpha=0.3, linestyle='--', linewidth=0.7)
+    ax.set_axisbelow(True)
+
+    # Números dentro da barra
+    for i, (bar, val) in enumerate(zip(bars, df_count.values)):
+        if val > 0:
+            ax.text(
+                val - (val * 0.02), bar.get_y() + bar.get_height() / 2,
+                str(int(val)),
+                va='center', ha='right', color='white', fontweight='bold', fontsize=10
+            )
+
+    ax.invert_yaxis()
+    plt.tight_layout()
+    fig.patch.set_facecolor('#f8fafc')
+    ax.set_facecolor('#f8fafc')
+
+    return imagem_para_base64(fig)
 
 def gerar_grafico_tempo_medio(df, titulo="Tempo Médio de Suporte"):
     if 'abertura' not in df.columns or 'fechamento' not in df.columns or 'motivo' not in df.columns:
@@ -502,24 +555,102 @@ def gerar_grafico_tempo_medio(df, titulo="Tempo Médio de Suporte"):
 
     df_finalizados['abertura'] = pd.to_datetime(df_finalizados['abertura'])
     df_finalizados['fechamento'] = pd.to_datetime(df_finalizados['fechamento'])
-
-    #  Calcula tempo em minutos
     df_finalizados['tempo_minutos'] = (df_finalizados['fechamento'] - df_finalizados['abertura']).dt.total_seconds() / 60
 
     df_medio = df_finalizados.groupby('motivo')['tempo_minutos'].mean().sort_values()
     if df_medio.empty:
         return None
 
-    fig, ax = plt.subplots(figsize=(7, 5))
-    bars = ax.barh(df_medio.index, df_medio.values, color=sns.color_palette("Set2", len(df_medio)))
-    ax.set_xlabel("Minutos")
-    ax.set_title(titulo, fontsize=13, weight="bold")
+    colors = sns.color_palette("mako", len(df_medio))
 
+    fig, ax = plt.subplots(figsize=(8, 6), facecolor='white')
+    bars = ax.barh(df_medio.index, df_medio.values, color=colors, height=0.7, edgecolor='white')
+
+    ax.set_xlabel("Minutos", fontsize=11, weight='600')
+    ax.set_title(titulo, fontsize=14, weight='bold', pad=20)
+
+    ax.grid(axis='x', alpha=0.3, linestyle='--')
+    ax.set_axisbelow(True)
+
+    # Números com fundo
     for bar, val in zip(bars, df_medio.values):
-        ax.text(val + 1, bar.get_y() + bar.get_height()/2, f"{val:.0f} min", va='center', fontweight='bold')
+        ax.text(
+            val + 2, bar.get_y() + bar.get_height()/2,
+            f"{val:.0f} min",
+            va='center', ha='left', color='#1f2937', fontweight='bold', fontsize=10
+        )
 
+    ax.invert_yaxis()
     plt.tight_layout()
+    fig.patch.set_facecolor('#f8fafc')
+    ax.set_facecolor('#f8fafc')
+
     return imagem_para_base64(fig)
+
+def filtrar_dashboard(request):
+    tipo = request.GET.get('tipo')
+    inicio = request.GET.get('inicio')
+    fim = request.GET.get('fim')
+    hoje = timezone.now().date()
+
+    # 🔹 Determina o intervalo de datas
+    if tipo == 'semana':
+        inicio = hoje - timedelta(days=7)
+        fim = hoje
+    elif tipo == 'quinzena':
+        inicio = hoje - timedelta(days=15)
+        fim = hoje
+    elif tipo == 'mes':
+        inicio = hoje - timedelta(days=30)
+        fim = hoje
+    elif tipo == 'periodo':
+        if inicio and fim:
+            try:
+                inicio = date.fromisoformat(inicio)
+                fim = date.fromisoformat(fim)
+            except ValueError:
+                return JsonResponse({'error': 'Datas inválidas'}, status=400)
+        else:
+            return JsonResponse({'error': 'Informe o período'}, status=400)
+    else:
+        return JsonResponse({'error': 'Tipo de filtro inválido'}, status=400)
+
+    # 🔹 Filtra os chamados
+    chamados = Chamado.objects.filter(abertura__date__range=[inicio, fim])
+
+    # 🔹 Converte em DataFrame
+    df = pd.DataFrame(list(chamados.values()))
+
+    if df.empty:
+        return JsonResponse({'error': 'Nenhum dado encontrado'}, status=404)
+
+    # 🔹 Remove timezone dos campos datetime
+    for col in df.select_dtypes(include=['datetime64[ns]', 'datetime64[ns, UTC]']).columns:
+        df[col] = pd.to_datetime(df[col], errors='coerce')
+        try:
+            df[col] = df[col].dt.tz_localize(None)
+        except TypeError:
+            notna_mask = df[col].notna()
+            df.loc[notna_mask, col] = df.loc[notna_mask, col].dt.tz_convert(None)
+
+    # 🔹 Adapta motivo personalizado
+    df['motivo_grafico'] = df.apply(
+        lambda row: row['outro_motivo'] if row.get('motivo') == 'OUTRO' and row.get('outro_motivo') else row.get('motivo'),
+        axis=1
+    )
+
+    # 🔹 Gera gráficos (mesma lógica do dashboard_view)
+    plots = {
+        'status': gerar_grafico_pie(df, 'status', 'Status dos Chamados'),
+        'lideres': gerar_grafico_bar(df, 'lider', 'Principais Líderes'),
+        'motivos': gerar_grafico_bar(df, 'motivo_grafico', 'Principais Motivos'),
+        'regionais': gerar_grafico_bar(df, 'regional', 'Chamados por Regional'),
+        'tempo_medio': gerar_grafico_tempo_medio(df),
+    }
+
+    # 🔹 Retorna em JSON
+    return JsonResponse({'plots': plots})
+
 @login_required
 def dashboard_view(request):
     #  Pega filtros do GET
@@ -590,7 +721,7 @@ def upload_excel(request):
     if request.method == "POST":
         form = UploadExcelForm(request.POST, request.FILES)
         if form.is_valid():
-            arquivo = form.cleaned_data['arquivo']
+            arquivo = form.cleaned_data['file']
             upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
             os.makedirs(upload_dir, exist_ok=True)
             file_path = os.path.join(upload_dir, "chamados.xlsx")
@@ -698,6 +829,7 @@ def chat_admin_view(request):
     return render(request, 'chamados/sistema_chamados.html', {
         'usuarios': usuarios,
     })
+
 
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required

@@ -2,43 +2,202 @@
 {% load static %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>📌 Cadastrar Chamado</h2>
+<div class="max-w-2xl mx-auto p-4">
+    <div class="bg-white rounded-2xl shadow-soft p-8">
 
-    <!-- Filtro por data -->
-    <form method="get" class="mb-3">
-        <label for="data">Filtrar por Data:</label>
-        <input type="date" id="data" name="data"
-               value="{{ data_selecionada|default:'' }}"
-               onchange="this.form.submit()" class="form-control w-auto d-inline">
-    </form>
+        <!-- Cabeçalho -->
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-sm">
+                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Cadastrar Chamado</h2>
+                    <p class="text-sm text-secondary">Preencha os dados abaixo</p>
+                </div>
+            </div>
 
-    <!-- Formulário de cadastro -->
-    <form method="post">
-        {% csrf_token %}
-        <div class="mb-3">
-            <label for="{{ form.regional.id_for_label }}" class="form-label">Regional</label>
-            {{ form.regional }}
-        </div>
-        <div class="mb-3">
-            <label for="{{ form.loja.id_for_label }}" class="form-label">Loja</label>
-            {{ form.loja }}
-        </div>
-        <div class="mb-3">
-            <label for="{{ form.lider.id_for_label }}" class="form-label">Líder</label>
-            {{ form.lider }}
-        </div>
-        <div class="mb-3">
-            <label for="{{ form.motivo.id_for_label }}" class="form-label">Motivo</label>
-            {{ form.motivo }}
-        </div>
-        <div class="mb-3">
-            <label for="{{ form.outro_motivo.id_for_label }}" class="form-label">Outro Motivo</label>
-            {{ form.outro_motivo }}
+            <!-- Botão Voltar -->
+            <a href="{% url 'chamados:sistema_chamados' %}"
+               class="group inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 hover:text-primary transition">
+                <svg class="w-4 h-4 text-gray-500 group-hover:text-primary group-hover:-translate-x-0.5 transition-transform"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Voltar
+            </a>
         </div>
 
-        <button type="submit" class="btn btn-primary">💾 Salvar Chamado</button>
-        <a href="{% url 'sistema_chamados' %}" class="btn btn-secondary">↩ Voltar</a>
-    </form>
+        <!-- Filtro por Data -->
+        <form method="get" id="form-filtro-data" class="mb-6">
+            <div class="flex items-center gap-3">
+                <label for="data" class="text-sm font-medium text-gray-700 whitespace-nowrap">
+                    Filtrar por Data
+                </label>
+                <div class="relative">
+                    <input type="date" id="data" name="data"
+                           value="{{ data_selecionada|date:'Y-m-d'|default:'' }}"
+                           class="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm w-full sm:w-48">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm font-medium hidden sm:block">
+                    Filtrar
+                </button>
+            </div>
+        </form>
+
+        <!-- Mensagens -->
+        {% if messages %}
+            <div class="space-y-2 mb-6">
+                {% for message in messages %}
+                    <div class="flex items-center gap-3 p-4 rounded-xl shadow-soft text-sm font-medium border animate-fade-in
+                        {% if message.tags == 'success' %}bg-green-50 text-success border-green-200{% endif %}
+                        {% if message.tags == 'error' %}bg-red-50 text-danger border-red-200{% endif %}
+                        {% if message.tags == 'warning' %}bg-yellow-50 text-warning border-yellow-200{% endif %}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+            <script>
+                setTimeout(() => {
+                    document.querySelectorAll('.animate-fade-in').forEach(el => {
+                        el.style.transition = 'opacity 0.5s';
+                        el.style.opacity = '0';
+                        setTimeout(() => el.remove(), 500);
+                    });
+                }, 4000);
+            </script>
+        {% endif %}
+
+        <!-- Formulário de Cadastro -->
+        <form method="post" id="form-cadastro" class="space-y-5">
+            {% csrf_token %}
+
+            <!-- Regional -->
+            <div>
+                <label for="{{ form.regional.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Regional <span class="text-danger">*</span>
+                </label>
+                {{ form.regional|add_class:"w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm" }}
+                {% if form.regional.errors %}
+                    <p class="text-xs text-danger mt-1">{{ form.regional.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Loja -->
+            <div>
+                <label for="{{ form.loja.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Loja <span class="text-danger">*</span>
+                </label>
+                {{ form.loja|add_class:"w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm" }}
+                {% if form.loja.errors %}
+                    <p class="text-xs text-danger mt-1">{{ form.loja.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Líder -->
+            <div>
+                <label for="{{ form.lider.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Líder <span class="text-danger">*</span>
+                </label>
+                {{ form.lider|add_class:"w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm" }}
+                {% if form.lider.errors %}
+                    <p class="text-xs text-danger mt-1">{{ form.lider.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Motivo -->
+            <div>
+                <label for="{{ form.motivo.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Motivo <span class="text-danger">*</span>
+                </label>
+                {{ form.motivo|add_class:"w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm"|attr:"onchange:toggleOutroMotivo(this)" }}
+                {% if form.motivo.errors %}
+                    <p class="text-xs text-danger mt-1">{{ form.motivo.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Outro Motivo (condicional) -->
+            <div id="div-outro-motivo" style="display: none;">
+                <label for="{{ form.outro_motivo.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Especifique o motivo
+                </label>
+                {{ form.outro_motivo|add_class:"w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm resize-none"|attr:"rows:2" }}
+                {% if form.outro_motivo.errors %}
+                    <p class="text-xs text-danger mt-1">{{ form.outro_motivo.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Botões -->
+            <div class="flex gap-3 pt-6">
+                <a href="{% url 'chamados:sistema_chamados' %}"
+                   class="flex-1 px-5 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium text-center">
+                    Cancelar
+                </a>
+                <button type="submit"
+                        id="btn-submit"
+                        class="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition shadow-sm font-medium text-sm disabled:opacity-70 disabled:cursor-not-allowed">
+                    <span id="btn-text">Salvar Chamado</span>
+                    <svg id="btn-spinner" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle Outro Motivo
+    window.toggleOutroMotivo = function(select) {
+        const outroDiv = document.getElementById('div-outro-motivo');
+        const outroInput = document.querySelector('[name="outro_motivo"]');
+        if (select.value === 'OUTRO') {
+            outroDiv.style.display = 'block';
+            outroInput.setAttribute('required', 'required');
+        } else {
+            outroDiv.style.display = 'none';
+            outroInput.removeAttribute('required');
+            outroInput.value = '';
+        }
+    };
+
+    // Trigger inicial
+    const motivoSelect = document.querySelector('[name="motivo"]');
+    if (motivoSelect) toggleOutroMotivo(motivoSelect);
+
+    // Filtro de data: submit automático
+    document.getElementById('data').addEventListener('change', function() {
+        document.getElementById('form-filtro-data').submit();
+    });
+
+    // Loading state
+    document.getElementById('form-cadastro').addEventListener('submit', function() {
+        const btn = document.getElementById('btn-submit');
+        const text = document.getElementById('btn-text');
+        const spinner = document.getElementById('btn-spinner');
+        btn.disabled = true;
+        text.textContent = 'Salvando...';
+        spinner.classList.remove('hidden');
+    });
+});
+</script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+</style>
 {% endblock %}

@@ -3,130 +3,310 @@
 {% load custom_filters %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-6">📊 Dashboard de Chamados</h1>
+<div class="space-y-8">
 
-<!-- AlpineJS -->
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
+    <!-- Título Principal -->
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            Dashboard de Chamados
+        </h1>
 
-<!-- Grid de gráficos -->
-<div class="grid grid-cols-2 md:grid-cols-2 gap-6">
+    </div>
+
+    <!-- Filtro de Período -->
+<div class="bg-white rounded-2xl shadow-soft p-6 flex flex-wrap gap-4 items-end">
+    <div>
+        <label class="block text-sm font-medium text-gray-700">Tipo de Filtro</label>
+        <select id="filtro-periodo" class="border rounded-lg px-3 py-2">
+            <option value="semana">Última Semana</option>
+            <option value="quinzena">Últimos 15 Dias</option>
+            <option value="mes">Último Mês</option>
+            <option value="periodo">Período Personalizado</option>
+        </select>
+    </div>
+
+    <div id="filtro-personalizado" class="hidden flex gap-2">
+        <div>
+            <label class="block text-sm font-medium text-gray-700">De</label>
+            <input type="date" id="data-inicio" class="border rounded-lg px-3 py-2">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Até</label>
+            <input type="date" id="data-fim" class="border rounded-lg px-3 py-2">
+        </div>
+    </div>
+
+    <button id="btn-filtrar"
+        class="bg-primary text-white px-5 py-2 rounded-lg hover:bg-primary-dark transition">
+        Aplicar Filtro
+    </button>
+
+    <!-- Loader -->
+    <div id="loader-graficos" class="hidden text-gray-500 text-sm ml-4">
+        Atualizando gráficos...
+    </div>
+</div>
+
+    <!-- Grid de Gráficos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     {% if plots %}
-        <!-- STATUS -->
+        <!-- Status -->
         {% if plots.status %}
-        <div x-data="{ open: false }" class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
-            <h3 class="text-lg font-semibold mb-4">📌 Status</h3>
-
-            <img src="data:image/png;base64,{{ plots.status }}"
-                 class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
-                 @click="open = true">
-
-            <!-- Modal -->
-            <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
-                <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
-                <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
-                    <img src="data:image/png;base64,{{ plots.status }}" class="max-w-full max-h-screen object-contain">
-                    <button @click="open = false"
-                            class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                        Fechar
-                    </button>
-                </div>
+        <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
+             onclick="abrirGraficoModal('status', `{{ plots.status }}`)">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    Status dos Chamados
+                </h3>
+                <svg class="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
             </div>
+            <img id="grafico-status"
+                 src="data:image/png;base64,{{ plots.status }}"
+                 alt="Gráfico de Status"
+                 class="w-full h-48 object-contain rounded-lg border border-gray-200 transition-opacity duration-300">
         </div>
         {% endif %}
 
-        <!-- REGIONAIS -->
+        <!-- Regionais -->
         {% if plots.regionais %}
-        <div x-data="{ open: false }" class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
-            <h3 class="text-lg font-semibold mb-4">📊 Chamados por Regional</h3>
-
-            <img src="data:image/png;base64,{{ plots.regionais }}"
-                 class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
-                 @click="open = true">
-
-            <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
-                <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
-                <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
-                    <img src="data:image/png;base64,{{ plots.regionais }}" class="max-w-full max-h-screen object-contain">
-                    <button @click="open = false"
-                            class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                        Fechar
-                    </button>
-                </div>
+        <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
+             onclick="abrirGraficoModal('regionais', `{{ plots.regionais }}`)">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    Chamados por Regional
+                </h3>
+                <svg class="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
             </div>
+            <img id="grafico-regionais"
+                 src="data:image/png;base64,{{ plots.regionais }}"
+                 alt="Gráfico por Regional"
+                 class="w-full h-48 object-contain rounded-lg border border-gray-200 transition-opacity duration-300">
         </div>
         {% endif %}
 
-        <!-- LÍDERES -->
+        <!-- Líderes -->
         {% if plots.lideres %}
-        <div x-data="{ open: false }" class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
-            <h3 class="text-lg font-semibold mb-4">👔 Principais Líderes</h3>
-
-            <img src="data:image/png;base64,{{ plots.lideres }}"
-                 class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
-                 @click="open = true">
-
-            <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
-                <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
-                <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
-                    <img src="data:image/png;base64,{{ plots.lideres }}" class="max-w-full max-h-screen object-contain">
-                    <button @click="open = false"
-                            class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                        Fechar
-                    </button>
-                </div>
+        <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
+             onclick="abrirGraficoModal('lideres', `{{ plots.lideres }}`)">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    Principais Líderes
+                </h3>
+                <svg class="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
             </div>
+            <img id="grafico-lideres"
+                 src="data:image/png;base64,{{ plots.lideres }}"
+                 alt="Gráfico de Líderes"
+                 class="w-full h-48 object-contain rounded-lg border border-gray-200 transition-opacity duration-300">
         </div>
         {% endif %}
 
-        <!-- MOTIVOS -->
+        <!-- Motivos -->
         {% if plots.motivos %}
-        <div x-data="{ open: false }" class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
-            <h3 class="text-lg font-semibold mb-4">⚙️ Principais Motivos</h3>
-
-            <img src="data:image/png;base64,{{ plots.motivos }}"
-                 class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
-                 @click="open = true">
-
-            <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
-                <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
-                <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
-                    <img src="data:image/png;base64,{{ plots.motivos }}" class="max-w-full max-h-screen object-contain">
-                    <button @click="open = false"
-                            class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                        Fechar
-                    </button>
-                </div>
+        <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
+             onclick="abrirGraficoModal('motivos', `{{ plots.motivos }}`)">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    Principais Motivos
+                </h3>
+                <svg class="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
             </div>
+            <img id="grafico-motivos"
+                 src="data:image/png;base64,{{ plots.motivos }}"
+                 alt="Gráfico de Motivos"
+                 class="w-full h-48 object-contain rounded-lg border border-gray-200 transition-opacity duration-300">
         </div>
         {% endif %}
 
-        <!-- TEMPO MÉDIO -->
+        <!-- Tempo Médio -->
         {% if plots.tempo_medio %}
-        <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition md:col-start-2 md:col-span-2">
-            <div x-data="{ open: false }" class="text-center">
-                <h3 class="text-lg font-semibold mb-4">⏱️ Tempo Médio</h3>
-
-                <img src="data:image/png;base64,{{ plots.tempo_medio }}"
-                     class="cursor-pointer mx-auto rounded-md max-w-full max-h-48 object-contain"
-                     @click="open = true">
-
-                <div x-show="open" x-transition.opacity class="fixed inset-0 flex items-center justify-center z-50">
-                    <div class="absolute inset-0 bg-black bg-opacity-50" @click="open = false"></div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg max-w-[100%] max-h-[100%] overflow-auto relative z-10">
-                        <img src="data:image/png;base64,{{ plots.tempo_medio }}" class="max-w-full max-h-screen object-contain">
-                        <button @click="open = false"
-                                class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                            Fechar
-                        </button>
-                    </div>
-                </div>
+        <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group md:col-span-2"
+             onclick="abrirGraficoModal('tempo_medio', `{{ plots.tempo_medio }}`)">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    Tempo Médio de Atendimento
+                </h3>
+                <svg class="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
             </div>
+            <img id="grafico-tempo-medio"
+                 src="data:image/png;base64,{{ plots.tempo_medio }}"
+                 alt="Gráfico de Tempo Médio"
+                 class="w-full h-48 object-contain rounded-lg border border-gray-200 mx-auto transition-opacity duration-300">
         </div>
         {% endif %}
     {% else %}
-        <div class="bg-gray-100 text-gray-500 rounded-xl p-8 text-center col-span-full">
-            ⚠️ Nenhum dado disponível para exibir gráficos.
+        <!-- Sem dados -->
+        <div class="md:col-span-2 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-10 text-center shadow-soft">
+            <div class="w-20 h-20 bg-gray-200 border-2 border-dashed rounded-xl mx-auto mb-4"></div>
+            <p class="text-lg font-medium text-gray-600">Nenhum dado disponível</p>
+            <p class="text-sm text-gray-500 mt-1">Os gráficos aparecerão assim que houver chamados registrados.</p>
         </div>
     {% endif %}
 </div>
+
+
+<!-- Modal de Gráfico (JS nativo) -->
+<div id="grafico-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4"
+     role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-auto p-6 transform transition-all scale-95 opacity-0">
+        <div class="flex justify-between items-center mb-4">
+            <h2 id="modal-titulo" class="text-xl font-bold text-gray-800"></h2>
+            <button onclick="fecharGraficoModal()"
+                    class="p-2 rounded-lg hover:bg-gray-100 transition"
+                    aria-label="Fechar">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <img id="modal-imagem" src="" alt="Gráfico ampliado" class="w-full rounded-lg border border-gray-200">
+        <div class="mt-4 text-center">
+            <button onclick="fecharGraficoModal()"
+                    class="px-6 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm font-medium">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let graficoModalAberto = false;
+
+function abrirGraficoModal(tipo, base64) {
+    const modal = document.getElementById('grafico-modal');
+    const content = modal.querySelector('.transform');
+    const titulo = document.getElementById('modal-titulo');
+    const imagem = document.getElementById('modal-imagem');
+
+    const titulos = {
+        status: 'Status dos Chamados',
+        regionais: 'Chamados por Regional',
+        lideres: 'Principais Líderes',
+        motivos: 'Principais Motivos',
+        tempo_medio: 'Tempo Médio de Atendimento'
+    };
+
+    titulo.textContent = titulos[tipo] || 'Gráfico';
+    imagem.src = `data:image/png;base64,${base64}`;
+    modal.classList.remove('hidden');
+    setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
+    graficoModalAberto = true;
+
+    // Fechar com ESC
+    document.addEventListener('keydown', fecharComESC);
+}
+
+function fecharGraficoModal() {
+    const modal = document.getElementById('grafico-modal');
+    const content = modal.querySelector('.transform');
+    content.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.removeEventListener('keydown', fecharComESC);
+    }, 200);
+    graficoModalAberto = false;
+}
+
+function fecharComESC(e) {
+    if (e.key === 'Escape' && graficoModalAberto) {
+        fecharGraficoModal();
+    }
+}
+
+// Fechar ao clicar fora
+document.getElementById('grafico-modal').addEventListener('click', function(e) {
+    if (e.target === this) fecharGraficoModal();
+});
+
+    // === FILTRO DE GRÁFICOS DINÂMICO ===
+document.addEventListener("DOMContentLoaded", () => {
+    const filtroSelect = document.getElementById("filtro-periodo");
+    const dataInicioInput = document.getElementById("data-inicio");
+    const dataFimInput = document.getElementById("data-fim");
+    const botaoFiltrar = document.getElementById("btn-filtrar");
+
+    const graficos = {
+        status: document.getElementById("grafico-status"),
+        regionais: document.getElementById("grafico-regionais"),
+        lideres: document.getElementById("grafico-lideres"),
+        motivos: document.getElementById("grafico-motivos"),
+        tempo_medio: document.getElementById("grafico-tempo-medio")
+    };
+
+    const loader = document.getElementById("loader-graficos");
+
+    async function atualizarGraficos() {
+        const tipo = filtroSelect.value;
+        const inicio = dataInicioInput.value;
+        const fim = dataFimInput.value;
+
+        // Mostra loader
+        loader.classList.remove("hidden");
+
+        try {
+            const params = new URLSearchParams({ tipo, inicio, fim });
+            const response = await fetch(`/dashboard_admin/filtrar/?${params}`);
+
+            if (!response.ok) {
+                throw new Error(`Erro ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            // Atualiza os gráficos com os base64 retornados
+            for (const [key, el] of Object.entries(graficos)) {
+                if (el && data.plots[key]) {
+                    el.src = `data:image/png;base64,${data.plots[key]}`;
+                }
+            }
+
+        } catch (err) {
+            console.error("Erro ao atualizar gráficos:", err);
+            alert(`Erro ao atualizar gráficos: ${err.message}`);
+        } finally {
+            // Esconde loader
+            loader.classList.add("hidden");
+        }
+    }
+
+    // Quando mudar o tipo de filtro
+    filtroSelect.addEventListener("change", () => {
+        const tipo = filtroSelect.value;
+        const periodoDiv = document.getElementById("filtro-personalizado");
+
+        if (tipo === "periodo") {
+            periodoDiv.classList.remove("hidden");
+        } else {
+            periodoDiv.classList.add("hidden");
+            atualizarGraficos();
+        }
+    });
+
+    // Quando clicar no botão "Filtrar" (para o tipo 'periodo')
+    botaoFiltrar.addEventListener("click", () => {
+        atualizarGraficos();
+    });
+});
+</script>
+
+<style>
+/* Animação suave */
+.scale-95 { transform: scale(0.95); }
+.opacity-0 { opacity: 0; }
+.transition-all { transition: all 0.3s ease; }
+</style>
 {% endblock %}

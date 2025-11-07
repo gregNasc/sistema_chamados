@@ -2,84 +2,155 @@
 {% load static %}
 
 {% block content %}
-<div class="max-w-lg mx-auto bg-white shadow-lg rounded-2xl p-6">
-    <h2 class="text-2xl font-bold mb-4 text-gray-800">👤 Cadastrar Novo Usuário</h2>
+<div class="max-w-md mx-auto">
+    <div class="bg-white rounded-2xl shadow-soft p-8">
 
-    <form method="post" class="space-y-4">
-        {% csrf_token %}
-        
-        <!-- Nome de usuário -->
-        <div>
-            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
-            <input type="text" id="username" name="username" required
-                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        <!-- Título -->
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
+                <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Cadastrar Usuário</h2>
+                <p class="text-sm text-secondary">Preencha os dados abaixo</p>
+            </div>
         </div>
 
-        <!-- Nome completo -->
-        <div>
-            <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">Nome completo</label>
-            <input type="text" id="first_name" name="first_name"
-                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
-        </div>
-
-        <!-- E-mail -->
-        <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-            <input type="email" id="email" name="email"
-                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
-        </div>
-
-        <div>
-            <label for="fone" class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-            <input type="fone" id="fone" name="fone" required
-                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
-        </div>
-
-        <!-- Senha -->
-        <div>
-            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-            <input type="password" id="password" name="password" required
-                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
-        </div>
-
-        <!-- Tipo de perfil -->
-        {% if user.papel == 'admin' %}
-        <div>
-            <label for="papel" class="block text-sm font-medium text-gray-700 mb-1">Perfil</label>
-            <select id="papel" name="papel"
-                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">
-                <option value="usuario">Usuário</option>
-                <option value="gestor">Gestor</option>
-                <option value="admin">Admin</option>
-            </select>
-        </div>
-        {% else %}
-        <!-- Gestores só podem criar usuários -->
-        <input type="hidden" name="papel" value="usuario">
+        <!-- Mensagens (com animação) -->
+        {% if messages %}
+            <div class="space-y-2 mb-6">
+                {% for message in messages %}
+                    <div class="flex items-center gap-3 p-4 rounded-xl shadow-soft text-sm font-medium border animate-fade-in
+                        {% if message.tags == 'success' %}bg-green-50 text-success border-green-200{% endif %}
+                        {% if message.tags == 'warning' %}bg-yellow-50 text-warning border-yellow-200{% endif %}
+                        {% if message.tags == 'error' %}bg-red-50 text-danger border-red-200{% endif %}
+                        {% if message.tags == 'info' %}bg-blue-50 text-primary border-blue-200{% endif %}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+            <script>
+                setTimeout(() => {
+                    document.querySelectorAll('.animate-fade-in').forEach(el => {
+                        el.style.transition = 'opacity 0.5s';
+                        el.style.opacity = '0';
+                        setTimeout(() => el.remove(), 500);
+                    });
+                }, 4000);
+            </script>
         {% endif %}
 
-        <!-- Botão -->
-        <div class="pt-4">
-            <button type="submit"
-                    class="w-full bg-blue-600 text-white py-2 rounded-md font-semibold hover:bg-blue-700 transition">
-                ➕ Criar Usuário
-            </button>
-        </div>
-    </form>
+        <!-- Formulário -->
+        <form method="post" id="form-cadastro" class="space-y-5">
+            {% csrf_token %}
+
+            <!-- Usuário -->
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Usuário <span class="text-danger">*</span>
+                </label>
+                <input type="text" id="username" name="username" required
+                       placeholder="ex: joao.silva"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+            </div>
+
+            <!-- Nome completo -->
+            <div>
+                <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Nome completo
+                </label>
+                <input type="text" id="first_name" name="first_name"
+                       placeholder="João Silva"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+            </div>
+
+            <!-- E-mail -->
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    E-mail
+                </label>
+                <input type="email" id="email" name="email"
+                       placeholder="joao@empresa.com"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+            </div>
+
+            <!-- Telefone -->
+            <div>
+                <label for="fone" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Telefone <span class="text-danger">*</span>
+                </label>
+                <input type="tel" id="fone" name="fone" required
+                       placeholder="(11) 98765-4321"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+            </div>
+
+            <!-- Senha -->
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Senha <span class="text-danger">*</span>
+                </label>
+                <input type="password" id="password" name="password" required
+                       placeholder="Mínimo 6 caracteres"
+                       minlength="6"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+                <p class="text-xs text-secondary mt-1">Use letras, números e símbolos para maior segurança.</p>
+            </div>
+
+            <!-- Perfil (apenas admin) -->
+            {% if user.papel == 'admin' %}
+            <div>
+                <label for="papel" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Perfil de Acesso
+                </label>
+                <select id="papel" name="papel"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+                    <option value="usuario">Usuário</option>
+                    <option value="gestor">Gestor</option>
+                    <option value="admin">Administrador</option>
+                </select>
+            </div>
+            {% else %}
+            <input type="hidden" name="papel" value="usuario">
+            {% endif %}
+
+            <!-- Botão -->
+            <div class="pt-4">
+                <button type="submit"
+                        class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition shadow-sm font-medium text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                        id="btn-submit">
+                    <span id="btn-text">Criar Usuário</span>
+                    <svg id="btn-spinner" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
-{% if messages %}
-<div class="mt-6 max-w-lg mx-auto">
-    {% for message in messages %}
-        <div class="
-            px-4 py-3 rounded-lg shadow text-sm font-medium mb-2
-            {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}
-            {% if message.tags == 'success' %}bg-green-100 text-green-800{% endif %}
-            {% if message.tags == 'error' %}bg-red-100 text-red-800{% endif %}
-            {% if message.tags == 'info' %}bg-blue-100 text-blue-800{% endif %}">
-            {{ message }}
-        </div>
-    {% endfor %}
-</div>
-{% endif %}
+<script>
+document.getElementById('form-cadastro').addEventListener('submit', function() {
+    const btn = document.getElementById('btn-submit');
+    const text = document.getElementById('btn-text');
+    const spinner = document.getElementById('btn-spinner');
+
+    btn.disabled = true;
+    text.textContent = 'Criando...';
+    spinner.classList.remove('hidden');
+});
+</script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+</style>
 {% endblock %}

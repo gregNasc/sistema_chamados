@@ -60,18 +60,8 @@ class ChamadoForm(forms.ModelForm):
 # Formulário de Upload de Excel
 # ------------------------------
 class UploadExcelForm(forms.Form):
-    arquivo = forms.FileField(label="Selecione o arquivo Excel")
-
-    def clean_arquivo(self):
-        arquivo = self.cleaned_data['arquivo']
-
-        # Verifica extensão
-        if not arquivo.name.endswith('.xlsx'):
-            raise forms.ValidationError("Apenas arquivos .xlsx são permitidos.")
-
-        # Verifica tamanho (máx. 5MB)
-        max_size = 5 * 1024 * 1024
-        if arquivo.size > max_size:
-            raise forms.ValidationError("O arquivo é muito grande (máx. 5 MB).")
-
-        return arquivo
+    file = forms.FileField(
+        label="Arquivo Excel",
+        widget=forms.FileInput(attrs={'accept': '.xlsx,.xls'}),
+        help_text="Apenas .xlsx ou .xls"
+    )

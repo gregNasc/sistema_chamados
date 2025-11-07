@@ -1,35 +1,131 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block content %}
-<div class="max-w-lg mx-auto bg-white shadow-lg rounded-2xl p-6">
-    <h2 class="text-2xl font-bold mb-4 text-gray-800">✏️ Editar Usuário</h2>
+<div class="max-w-md mx-auto">
+    <div class="bg-white rounded-2xl shadow-soft p-8">
 
-    <form method="post" class="space-y-4">
-        {% csrf_token %}
-        <div>
-            <label class="block text-sm font-medium mb-1">Nome</label>
-            <input type="text" name="first_name" value="{{ usuario.first_name }}"
-                   class="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-300">
+        <!-- Cabeçalho com Voltar + Título -->
+        <div class="flex items-center justify-between mb-6">
+            <a href="{% url 'chamados:gerenciar_usuarios' %}"
+               class="group inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 hover:text-primary transition">
+                <svg class="w-4 h-4 text-gray-500 group-hover:text-primary group-hover:-translate-x-0.5 transition-transform"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Voltar
+            </a>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Editar Usuário</h2>
+                    <p class="text-xs text-secondary">@{{ usuario.username }}</p>
+                </div>
+            </div>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium mb-1">E-mail</label>
-            <input type="email" name="email" value="{{ usuario.email }}"
-                   class="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-300">
-        </div>
+        <!-- Mensagens -->
+        {% if messages %}
+            <div class="space-y-2 mb-6">
+                {% for message in messages %}
+                    <div class="flex items-center gap-3 p-4 rounded-xl shadow-soft text-sm font-medium border animate-fade-in
+                        {% if message.tags == 'success' %}bg-green-50 text-success border-green-200{% endif %}
+                        {% if message.tags == 'error' %}bg-red-50 text-danger border-red-200{% endif %}
+                        {% if message.tags == 'warning' %}bg-yellow-50 text-warning border-yellow-200{% endif %}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+            <script>
+                setTimeout(() => {
+                    document.querySelectorAll('.animate-fade-in').forEach(el => {
+                        el.style.transition = 'opacity 0.5s';
+                        el.style.opacity = '0';
+                        setTimeout(() => el.remove(), 500);
+                    });
+                }, 4000);
+            </script>
+        {% endif %}
 
-        <div>
-            <label class="block text-sm font-medium mb-1">Papel</label>
-            <select name="papel" class="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-300">
-                <option value="usuario" {% if usuario.papel == 'usuario' %}selected{% endif %}>Usuário</option>
-                <option value="gestor" {% if usuario.papel == 'gestor' %}selected{% endif %}>Gestor</option>
-                <option value="admin" {% if usuario.papel == 'admin' %}selected{% endif %}>Administrador</option>
-            </select>
-        </div>
+        <!-- Formulário -->
+        <form method="post" id="form-editar" class="space-y-5">
+            {% csrf_token %}
 
-        <button type="submit"
-                class="w-full bg-blue-600 text-white py-2 rounded-md font-semibold hover:bg-blue-700 transition">
-            💾 Salvar Alterações
-        </button>
-    </form>
+            <!-- Nome -->
+            <div>
+                <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Nome completo
+                </label>
+                <input type="text" id="first_name" name="first_name"
+                       value="{{ usuario.first_name }}"
+                       placeholder="ex: João Silva"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+            </div>
+
+            <!-- E-mail -->
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    E-mail
+                </label>
+                <input type="email" id="email" name="email"
+                       value="{{ usuario.email }}"
+                       placeholder="joao@empresa.com"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+            </div>
+
+            <!-- Papel -->
+            <div>
+                <label for="papel" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Perfil de Acesso
+                </label>
+                <select id="papel" name="papel"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+                    <option value="usuario" {% if usuario.papel == 'usuario' %}selected{% endif %}>Usuário</option>
+                    <option value="gestor" {% if usuario.papel == 'gestor' %}selected{% endif %}>Gestor</option>
+                    <option value="admin" {% if usuario.papel == 'admin' %}selected{% endif %}>Administrador</option>
+                </select>
+            </div>
+
+            <!-- Botão -->
+            <div class="pt-4">
+                <button type="submit"
+                        id="btn-submit"
+                        class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition shadow-sm font-medium text-sm disabled:opacity-70 disabled:cursor-not-allowed">
+                    <span id="btn-text">Salvar Alterações</span>
+                    <svg id="btn-spinner" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
+
+<script>
+document.getElementById('form-editar').addEventListener('submit', function() {
+    const btn = document.getElementById('btn-submit');
+    const text = document.getElementById('btn-text');
+    const spinner = document.getElementById('btn-spinner');
+
+    btn.disabled = true;
+    text.textContent = 'Salvando...';
+    spinner.classList.remove('hidden');
+});
+</script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+</style>
 {% endblock %}

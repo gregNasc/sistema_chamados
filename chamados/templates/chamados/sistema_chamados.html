@@ -2,400 +2,389 @@
 {% load static %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-6 text-gray-800">📋 Sistema de Chamados</h1>
+<div class="space-y-8">
 
-<!-- ALERTA DE MENSAGEM -->
-{% if messages %}
-<div id="mensagem-alerta" class="p-2 mb-4 rounded bg-green-100 text-green-800">
-    {% for message in messages %}
-        {{ message }}
-    {% endfor %}
-</div>
-<script>
-  setTimeout(() => {
-    const alerta = document.getElementById('mensagem-alerta');
-    if(alerta) alerta.remove();
-  }, 3000);
+    <!-- Título Principal + Filtro por Data -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            Sistema de Chamados
+        </h1>
 
-  const formChamado = document.getElementById('form-chamado');
-  if(formChamado) formChamado.reset();
-</script>
-{% endif %}
+        <!-- FILTRO POR DATA -->
+        <form method="get" id="form-filtro" class="flex items-center gap-3">
+            <label for="data" class="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Filtrar por Data:
+            </label>
+            <input type="date" id="data" name="data" value="{{ data_selecionada }}"
+                   class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary focus:outline-none focus:border-primary transition text-sm">
+            <button type="submit"
+                    class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm font-medium shadow-sm">
+                Filtrar
+            </button>
+        </form>
 
-<!-- Filtro por data -->
-<form method="get" id="form-filtro" class="flex items-center gap-3 mb-6">
-    <label for="data" class="text-sm font-medium">Filtrar por Data:</label>
-    <input type="date" id="data" name="data" value="{{ data_selecionada }}"
-           class="px-3 py-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-    <button type="submit"
-            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm">
-        Filtrar
-    </button>
-</form>
+    </div>
 
-<hr class="my-6">
-
-<!-- Formulário de cadastro de chamado -->
-<h2 class="text-xl font-semibold mb-4 text-gray-700">📌 Cadastrar Chamado</h2>
-
-<form method="post" id="form-chamado" class="space-y-4 bg-white p-6 rounded-2xl shadow">
-    {% csrf_token %}
-
-    <!-- Regional -->
-    <div>
-        <label for="regional" class="block text-sm font-medium mb-1">Regional</label>
-        <select name="regional" id="regional"
-                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-            <option value="">Selecione uma Regional</option>
-            {% for r in regionais %}
-                <option value="{{ r }}" {% if r == regional_selecionada %}selected{% endif %}>{{ r }}</option>
+    <!-- Mensagens -->
+    {% if messages %}
+        <div class="space-y-2">
+            {% for message in messages %}
+                <div class="flex items-center gap-3 p-4 rounded-xl shadow-soft text-sm font-medium border animate-fade-in
+                    {% if message.tags == 'success' %}bg-green-50 text-success border-green-200{% endif %}
+                    {% if message.tags == 'warning' %}bg-yellow-50 text-warning border-yellow-200{% endif %}
+                    {% if message.tags == 'error' %}bg-red-50 text-danger border-red-200{% endif %}
+                    {% if message.tags == 'info' %}bg-blue-50 text-primary border-blue-200{% endif %}">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>{{ message }}</span>
+                </div>
             {% endfor %}
-        </select>
-    </div>
+        </div>
+        <script>
+            setTimeout(() => {
+                document.querySelectorAll('.animate-fade-in').forEach(el => {
+                    el.style.transition = 'opacity 0.5s';
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 500);
+                });
+            }, 3000);
+        </script>
+    {% endif %}
 
-    <!-- Loja -->
-    <div>
-        <label for="loja" class="block text-sm font-medium mb-1">Loja</label>
-        <select name="loja" id="loja"
-                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-            <option value="">Selecione uma Loja</option>
-            {% for l in lojas %}
-                <option value="{{ l }}" {% if l == loja_selecionada %}selected{% endif %}>{{ l }}</option>
-            {% endfor %}
-        </select>
-    </div>
+    <!-- Formulário de Cadastro -->
+    <div class="bg-white rounded-2xl shadow-soft p-6">
+        <h2 class="text-xl font-semibold text-gray-700 mb-5 flex items-center gap-2">
+            Cadastrar Chamado
+        </h2>
 
-    <!-- Líder -->
-    <div>
-        <label for="lider" class="block text-sm font-medium mb-1">Líder</label>
-        <input list="lideres" name="lider" id="lider"
-               class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase"
-               value="{{ lider_selecionado }}">
-        <datalist id="lideres">
-            {% for lider in lideres %}
-                <option value="{{ lider }}">
-            {% endfor %}
-        </datalist>
-    </div>
-
-    <!-- Motivo -->
-    <div>
-        <label for="motivo" class="block text-sm font-medium mb-1">Motivo</label>
-        <select name="motivo" id="motivo"
-                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-            <option value="">Selecione um Motivo</option>
-        </select>
-    </div>
-
-    <!-- Outro Motivo -->
-    <div id="div_outro_motivo" style="display:none;">
-        <label for="outro_motivo" class="block text-sm font-medium mb-1">Outro Motivo</label>
-        <input type="text" name="outro_motivo" id="outro_motivo"
-               placeholder="Especifique outro motivo"
-               value="{{ form.outro_motivo.value|default:'' }}"
-               class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase">
-    </div>
-
-    <button type="submit"
-            class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm">
-        💾 Salvar Chamado
-    </button>
-</form>
-
-<!-- Lista de chamados -->
-<h2 class="text-xl font-semibold mt-10 mb-4 text-gray-700">📂 Chamados Abertos</h2>
-
-{% if chamados %}
-<div class="overflow-x-auto bg-white rounded-2xl shadow">
-    <table class="w-full text-sm text-left border-collapse">
-        <thead class="bg-gray-100 text-gray-600 uppercase text-xs font-semibold">
-            <tr>
-                <th class="px-6 py-3">Regional</th>
-                <th class="px-6 py-3">Loja</th>
-                <th class="px-6 py-3">Líder</th>
-                <th class="px-6 py-3">Motivo</th>
-                <th class="px-6 py-3">Usuário</th>
-                <th class="px-6 py-3">Data de Criação</th>
-                <th class="px-6 py-3">Ação</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-            {% for chamado in chamados %}
-            <tr class="hover:bg-gray-50 transition" data-status="{{ chamado.status }}">
-                <td class="px-4 py-2">{{ chamado.regional }}</td>
-                <td class="px-4 py-2">{{ chamado.loja }}</td>
-                <td class="px-4 py-2">{{ chamado.lider }}</td>
-                <td class="px-6 py-3">
-                    {% if chamado.motivo == "OUTRO" and chamado.outro_motivo %}
-                        {{ chamado.motivo }}: {{ chamado.outro_motivo }}
-                    {% else %}
-                        {{ chamado.motivo }}
-                    {% endif %}
-                </td>
-                <td class="px-4 py-2">{{ chamado.usuario }}</td>
-                <td class="px-6 py-3">{{ chamado.abertura|date:"d/m/Y H:i" }}</td>
-                <td class="px-6 py-3">
-                    <button class="px-3 py-1 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 transition text-xs"
-                            onclick="abrirModal({{ chamado.id }})">
-                        Finalizar
-                    </button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% else %}
-<p class="text-gray-500 italic">Não há chamados abertos.</p>
-{% endif %}
-
-<a href="{% url 'chamados:todos_chamados' %}"
-   class="inline-block mt-6 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm">
-   🔎 Ver todos os chamados
-</a>
-
-<!-- Modal Finalizar Chamado -->
-<div id="modal-finalizar" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-    <div class="bg-white p-6 rounded-2xl shadow w-96">
-        <h2 class="text-lg font-bold mb-4">Finalizar Chamado {{ chamado.loja }}</h2>
-        <form method="post" id="form-finalizar">
+        <form method="post" id="form-chamado" class="grid md:grid-cols-2 gap-5">
             {% csrf_token %}
 
-            <!-- Observação -->
-            <label>Deseja acrescentar uma observação?</label>
-            <select name="adicionar_obs" onchange="toggleObservacao(this)" class="w-full mb-3 border rounded px-2 py-1">
-                <option value="Não">Não</option>
-                <option value="Sim">Sim</option>
-            </select>
-            <textarea name="observacao" id="observacao" style="display:none" class="w-full border rounded px-2 py-1 mb-3"></textarea>
+            <!-- Regional -->
+            <div>
+                <label for="regional" class="block text-sm font-medium text-gray-700 mb-1.5">Regional</label>
+                <select name="regional" id="regional" required
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+                    <option value="">Selecione uma Regional</option>
+                    {% for r in regionais %}
+                        <option value="{{ r }}" {% if r == regional_selecionada %}selected{% endif %}>{{ r }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-             <!-- Tempo médio manual -->
-            <label>Deseja acrescentar o tempo médio manualmente?</label>
-            <select name="usar_tempo_manual" onchange="toggleTempoManual(this)"
-                    class="w-full mb-3 border rounded px-2 py-1">
-                <option value="Não">Não</option>
-                <option value="Sim">Sim</option>
-            </select>
-            <input type="number" name="tempo_manual" id="tempo_manual" min="1" placeholder="Minutos"
-                   style="display:none" class="w-full border rounded px-2 py-1 mb-3">
+            <!-- Loja -->
+            <div>
+                <label for="loja" class="block text-sm font-medium text-gray-700 mb-1.5">Loja</label>
+                <select name="loja" id="loja" required
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+                    <option value="">Selecione uma Loja</option>
+                    {% for l in lojas %}
+                        <option value="{{ l }}" {% if l == loja_selecionada %}selected{% endif %}>{{ l }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-            <div class="flex justify-end gap-2">
-                <button type="button" onclick="fecharModal()"
-                        class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancelar</button>
+            <!-- Líder -->
+            <div>
+                <label for="lider" class="block text-sm font-medium text-gray-700 mb-1.5">Líder</label>
+                <input list="lideres" name="lider" id="lider" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm uppercase"
+                       value="{{ lider_selecionado }}" placeholder="Digite ou selecione">
+                <datalist id="lideres">
+                    {% for lider in lideres %}
+                        <option value="{{ lider }}">
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <!-- Motivo -->
+            <div>
+                <label for="motivo" class="block text-sm font-medium text-gray-700 mb-1.5">Motivo</label>
+                <select name="motivo" id="motivo" required
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm">
+                    <option value="">Selecione um Motivo</option>
+                </select>
+            </div>
+
+            <!-- Outro Motivo -->
+            <div id="div_outro_motivo" class="md:col-span-2" style="display:none;">
+                <label for="outro_motivo" class="block text-sm font-medium text-gray-700 mb-1.5">Outro Motivo</label>
+                <input type="text" name="outro_motivo" id="outro_motivo"
+                       placeholder="Especifique outro motivo"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition text-sm uppercase">
+            </div>
+
+            <!-- Botão -->
+            <div class="md:col-span-2">
                 <button type="submit"
-                        class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Confirmar</button>
+                        class="w-full md:w-auto px-6 py-2.5 bg-success text-white rounded-lg hover:bg-green-600 transition shadow-sm font-medium text-sm flex items-center justify-center gap-2">
+                    Salvar Chamado
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Lista de Chamados -->
+    <div>
+        <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            Chamados Abertos
+        </h2>
+
+        {% if chamados %}
+        <div class="bg-white rounded-2xl shadow-soft overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold border-b">
+                        <tr>
+                            <th class="px-6 py-3">Regional</th>
+                            <th class="px-6 py-3">Loja</th>
+                            <th class="px-6 py-3">Líder</th>
+                            <th class="px-6 py-3">Motivo</th>
+                            <th class="px-6 py-3">Usuário</th>
+                            <th class="px-6 py-3">Abertura</th>
+                            <th class="px-6 py-3 text-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        {% for chamado in chamados %}
+                        <tr class="hover:bg-gray-50 transition" data-status="{{ chamado.status }}">
+                            <td class="px-6 py-3 font-medium">{{ chamado.regional }}</td>
+                            <td class="px-6 py-3">{{ chamado.loja }}</td>
+                            <td class="px-6 py-3">{{ chamado.lider }}</td>
+                            <td class="px-6 py-3">
+                                {% if chamado.motivo == "OUTRO" and chamado.outro_motivo %}
+                                    <span class="text-xs bg-warning/10 text-warning px-2 py-1 rounded-full">
+                                        {{ chamado.outro_motivo }}
+                                    </span>
+                                {% else %}
+                                    {{ chamado.motivo }}
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3 text-secondary">{{ chamado.usuario }}</td>
+                            <td class="px-6 py-3 text-xs text-gray-500">{{ chamado.abertura|date:"d/m/Y H:i" }}</td>
+                            <td class="px-6 py-3 text-center">
+                                <button onclick="abrirModal({{ chamado.id }}, '{{ chamado.loja|escapejs }}')"
+                                        class="px-3 py-1.5 bg-warning text-white text-xs rounded-lg hover:bg-yellow-500 transition font-medium">
+                                    Finalizar
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-gray-500 italic text-center py-8 bg-gray-50 rounded-xl">
+            Não há chamados abertos no momento.
+        </p>
+        {% endif %}
+
+        <div class="mt-6 text-center">
+            <a href="{% url 'chamados:todos_chamados' %}"
+               class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm font-medium">
+                Ver todos os chamados
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Finalizar -->
+<div id="modal-finalizar" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-95 opacity-0">
+        <h2 class="text-lg font-bold text-gray-800 mb-4" id="modal-titulo">Finalizar Chamado</h2>
+        <form method="post" id="form-finalizar">
+            {% csrf_token %}
+            <input type="hidden" name="chamado_id" id="chamado-id">
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Adicionar observação?</label>
+                    <select name="adicionar_obs" onchange="toggleObservacao(this)" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary text-sm">
+                        <option value="Não">Não</option>
+                        <option value="Sim">Sim</option>
+                    </select>
+                </div>
+                <textarea name="observacao" id="observacao" rows="3" style="display:none"
+                          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary text-sm resize-none"></textarea>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tempo médio manual?</label>
+                    <select name="usar_tempo_manual" onchange="toggleTempoManual(this)" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary text-sm">
+                        <option value="Não">Não</option>
+                        <option value="Sim">Sim</option>
+                    </select>
+                </div>
+                <input type="number" name="tempo_manual" id="tempo_manual" min="1" placeholder="Minutos" style="display:none"
+                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary text-sm">
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="fecharModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium">
+                    Cancelar
+                </button>
+                <button type="submit" class="px-5 py-2 bg-success text-white rounded-lg hover:bg-green-600 transition text-sm font-medium">
+                    Confirmar
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-
-
-<!-- Modal Timer-->
-<div id="chamadoModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white rounded-lg p-6 w-80 shadow-lg">
-        <h2 class="text-lg font-bold mb-4" id="modalLoja">Chamado</h2>
-        <p id="modalTexto" class="mb-6">O chamado ainda da loja {{ chamado.loja }} ainda está aberto!</p>
-        <div class="flex justify-end gap-2">
-            <button id="btnSim" class="px-4 py-2 bg-green-500 text-white rounded">OK</button>
+<!-- Modal de Alerta de Chamado Aberto -->
+<div id="chamadoModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center transform transition-all scale-95 opacity-0">
+        <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
         </div>
+        <h3 class="text-lg font-bold text-gray-800" id="modalLoja">Chamado Aberto</h3>
+        <p class="text-sm text-gray-600 mt-2" id="modalTexto"></p>
+        <button id="btnOk" class="mt-5 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm font-medium">
+            Entendido
+        </button>
     </div>
 </div>
 
-<!-- SCRIPTS -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="{% static 'chamados/scripts.js' %}"></script>
-
 <script>
-function inicializarFormulario() {
-    const motivosFixos = [
-        '',
-        'FALHA NA IMPRESSÃO',
-        'IMPRESSORA QUEIMADA',
-        'ROUTER NÃO FUNCIONA',
-        'NOTEBOOK NÃO LIGA',
-        'COLETOR NÃO CONECTA NA REDE',
-        'OUTRO'
-    ];
-
-    const motivosDB = [
-        {% for m in form.fields.motivo.choices %}
-            '{{ m.0 }}',
-        {% endfor %}
-    ].filter(m => !motivosFixos.includes(m));
-
-    const todosMotivos = motivosFixos.concat(motivosDB);
-    const motivoSelect = document.getElementById('motivo');
-
-    motivoSelect.innerHTML = '';
-    todosMotivos.forEach(m => {
-        const option = document.createElement('option');
-        option.value = m;
-        option.textContent = m;
-        if ("{{ form.motivo.value }}" === m) option.selected = true;
-        motivoSelect.appendChild(option);
-    });
-
-    const outroDiv = document.getElementById('div_outro_motivo');
-    outroDiv.style.display = motivoSelect.value === 'OUTRO' ? 'block' : 'none';
-
-    motivoSelect.addEventListener('change', () => {
-        outroDiv.style.display = motivoSelect.value === 'OUTRO' ? 'block' : 'none';
-    });
-}
-
-window.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializa formulário
     inicializarFormulario();
 
-    // Filtro de chamados abertos (apenas frontend)
-    const rows = document.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-        if (row.dataset.status !== 'Aberto') {
-            row.style.display = 'none';
-        }
-    });
-});
-
-window.addEventListener('pageshow', (event) => {
-    if (event.persisted) {
-        inicializarFormulario();
-    }
-});
-
-$(function(){
-    function atualizarLojas(selecionarValor=false) {
-        let data = $('#data').val();
-        let regional = $('#regional').val();
-        $.getJSON("{% url 'chamados:lojas_por_regional' %}", {data, regional}, function(resp){
-            let lojaSelect = $('#loja');
-            lojaSelect.empty().append('<option value="">Selecione uma Loja</option>');
-            resp.lojas.forEach(loja => lojaSelect.append(`<option value="${loja}">${loja}</option>`));
-            if(selecionarValor && resp.lojas.length > 0) lojaSelect.val(resp.lojas[0]).change();
-            $('#lider').val('');
-        });
-    }
-
-    function atualizarLider() {
-        let data = $('#data').val();
-        let loja = $('#loja').val();
-        $.getJSON("{% url 'chamados:lider_por_loja' %}", {data, loja}, function(resp){
-            let datalist = $('#lideres');
-            datalist.empty();
-            if(resp.lider){
-                datalist.append(`<option value="${resp.lider}">`);
-                $('#lider').val(resp.lider);
-            } else $('#lider').val('');
-        });
-    }
-
+    // Atualiza lojas e líder
     $('#regional').change(() => atualizarLojas(true));
     $('#loja').change(atualizarLider);
-
     if ($('#regional').val()) {
         atualizarLojas(true);
         atualizarLider();
     }
-});
 
-function abrirModal(id){
-    $('#modal-finalizar').show();
-    $('#form-finalizar').attr('action', `/finalizar/${id}/`);
-    $('#observacao').hide();
-}
+    // Filtra apenas chamados abertos
+    document.querySelectorAll('tbody tr').forEach(row => {
+        if (row.dataset.status !== 'Aberto') row.style.display = 'none';
+    });
 
-function fecharModal(){
-    $('#modal-finalizar').hide();
-}
-
-function toggleObservacao(select) {
-    const textarea = document.getElementById('observacao');
-    textarea.style.display = select.value === 'Sim' ? 'block' : 'none';
-}
-
-function toggleTempoManual(select) {
-    const input = document.getElementById('tempo_manual');
-    if (select.value === 'Sim') {
-        input.style.display = 'block';
-    } else {
-        input.style.display = 'none';
-        input.value = '';  // limpa o valor quando não for usado
-    }
-}
-
-    document.getElementById('form-finalizar').addEventListener('submit', function (e) {
-    const usarTempoManual = document.querySelector('[name="usar_tempo_manual"]').value;
-    const tempoManual = document.getElementById('tempo_manual');
-
-    // Se o usuário marcou "Sim", mas não digitou nada
-    if (usarTempoManual === 'Sim' && tempoManual.value === '') {
-        e.preventDefault();
-        alert('⚠️ Por favor, informe o tempo manual antes de confirmar.');
-        tempoManual.focus();
-        return;
-    }
-
-    // Se marcou "Não", limpa o campo antes de enviar
-    if (usarTempoManual === 'Não') {
-        tempoManual.value = '';
-    }
-
-    tempoManual.disabled = false;
-});
-
-</script>
-
-<script>
-    const modal = document.getElementById('chamadoModal');
-    const modalLoja = document.getElementById('modalLoja');
-    const modalTexto = document.getElementById('modalTexto');
-    const btnOk = document.getElementById('btnSim'); // Agora só um botão "OK"
-
-    // Lista de lojas abertas do backend
+    // Alerta de chamados abertos
     const chamadosAbertos = [
         {% for chamado in chamados %}
             "{{ chamado.loja }}",
         {% endfor %}
     ];
-
-    // Armazena lojas que já foram exibidas (evita repetir)
     const lojasExibidas = new Set();
 
-    // Função para mostrar um modal para uma loja específica
-    function mostrarModal(loja, callback) {
-        if (lojasExibidas.has(loja)) {
-            callback();
-            return;
-        }
-
-        modalLoja.textContent = `Chamado ${loja}`;
-        modalTexto.textContent = `O chamado da loja ${loja} ainda está aberto!`;
+    function mostrarModalAlerta(loja, callback) {
+        if (lojasExibidas.has(loja)) return callback();
+        const modal = document.getElementById('chamadoModal');
+        const content = modal.querySelector('.transform');
+        document.getElementById('modalLoja').textContent = `Chamado ${loja}`;
+        document.getElementById('modalTexto').textContent = `O chamado da loja ${loja} ainda está aberto!`;
         modal.classList.remove('hidden');
+        setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
 
-        btnOk.onclick = () => {
+        document.getElementById('btnOk').onclick = () => {
             lojasExibidas.add(loja);
-            modal.classList.add('hidden');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
             callback();
         };
     }
 
-    // Função para exibir os modais em sequência com delay
-    function mostrarChamadosSequenciais(lojas, index = 0) {
-        if (index >= lojas.length) return; // acabou a lista
-        mostrarModal(lojas[index], () => {
-            // Delay curto antes de mostrar o próximo modal
-            setTimeout(() => mostrarChamadosSequenciais(lojas, index + 1), 300);
-        });
+    function mostrarSequencial(lojas, i = 0) {
+        if (i >= lojas.length) return;
+        mostrarModalAlerta(lojas[i], () => setTimeout(() => mostrarSequencial(lojas, i + 1), 300));
     }
 
-    // Executa a sequência ao carregar a página
-    if (chamadosAbertos.length > 0) {
-        mostrarChamadosSequenciais(chamadosAbertos);
+    if (chamadosAbertos.length > 0) mostrarSequencial(chamadosAbertos);
+});
+
+// Funções auxiliares
+function inicializarFormulario() {
+    const motivosFixos = ['', 'FALHA NA IMPRESSÃO', 'IMPRESSORA QUEIMADA', 'ROUTER NÃO FUNCIONA', 'NOTEBOOK NÃO LIGA', 'COLETOR NÃO CONECTA NA REDE', 'OUTRO'];
+    const motivosDB = [{% for m in form.fields.motivo.choices %}'{{ m.0 }}',{% endfor %}].filter(m => !motivosFixos.includes(m));
+    const todos = [...new Set(motivosFixos.concat(motivosDB))];
+    const select = document.getElementById('motivo');
+    select.innerHTML = todos.map(m => `<option value="${m}" ${"{{ form.motivo.value }}" === m ? 'selected' : ''}>${m}</option>`).join('');
+    toggleOutroMotivo();
+    select.addEventListener('change', toggleOutroMotivo);
+}
+
+function toggleOutroMotivo() {
+    const div = document.getElementById('div_outro_motivo');
+    div.style.display = document.getElementById('motivo').value === 'OUTRO' ? 'block' : 'none';
+}
+
+function atualizarLojas(selecionarPrimeira = false) {
+    $.getJSON("{% url 'chamados:lojas_por_regional' %}", {
+        data: '{{ data_selecionada }}',
+        regional: $('#regional').val()
+    }, function(resp) {
+        const select = $('#loja');
+        select.empty().append('<option value="">Selecione uma Loja</option>');
+        resp.lojas.forEach(l => select.append(`<option value="${l}">${l}</option>`));
+        if (selecionarPrimeira && resp.lojas.length) select.val(resp.lojas[0]).change();
+        $('#lider').val('');
+    });
+}
+
+function atualizarLider() {
+    $.getJSON("{% url 'chamados:lider_por_loja' %}", {
+        data: '{{ data_selecionada }}',
+        loja: $('#loja').val()
+    }, function(resp) {
+        const datalist = $('#lideres');
+        datalist.empty();
+        if (resp.lider) {
+            datalist.append(`<option value="${resp.lider}">`);
+            $('#lider').val(resp.lider);
+        } else $('#lider').val('');
+    });
+}
+
+function abrirModal(id, loja) {
+    const modal = document.getElementById('modal-finalizar');
+    const content = modal.querySelector('.transform');
+    document.getElementById('chamado-id').value = id;
+    document.getElementById('modal-titulo').textContent = `Finalizar Chamado ${loja}`;
+    document.getElementById('form-finalizar').action = `/finalizar/${id}/`;
+    modal.classList.remove('hidden');
+    setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
+}
+
+function fecharModal() {
+    const modal = document.getElementById('modal-finalizar');
+    const content = modal.querySelector('.transform');
+    content.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 200);
+}
+
+function toggleObservacao(select) {
+    document.getElementById('observacao').style.display = select.value === 'Sim' ? 'block' : 'none';
+}
+
+function toggleTempoManual(select) {
+    const input = document.getElementById('tempo_manual');
+    input.style.display = select.value === 'Sim' ? 'block' : 'none';
+    if (select.value === 'Não') input.value = '';
+}
+
+document.getElementById('form-finalizar')?.addEventListener('submit', function(e) {
+    const usar = document.querySelector('[name="usar_tempo_manual"]').value;
+    const campo = document.getElementById('tempo_manual');
+    if (usar === 'Sim' && !campo.value) {
+        e.preventDefault();
+        alert('Por favor, informe o tempo manual.');
+        campo.focus();
     }
+});
 </script>
 
-
-
-
-
-
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+</style>
 {% endblock %}
