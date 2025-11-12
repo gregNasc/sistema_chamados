@@ -241,41 +241,54 @@ document.addEventListener('DOMContentLoaded', () => {
 </button>
 
 <!-- Chat Modal -->
-<div id="chat-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-end hidden z-50 p-4 transition-opacity">
-    <div id="chat-content" class="bg-white w-full max-w-sm h-96 rounded-2xl shadow-2xl flex flex-col overflow-hidden transform transition-all duration-300 scale-95 opacity-0">
-        <div class="bg-primary text-white p-4 rounded-t-2xl">
+<div id="chat-modal" class="fixed inset-0 bg-black/60 backdrop-blur-md flex items-end justify-end hidden z-50 p-4 transition-all duration-300">
+    <div id="chat-content"
+         class="flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md"
+         style="height: calc(100dvh - 140px); max-height: 720px;">
+
+        <!-- HEADER -->
+        <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white p-5">
             <div class="flex justify-between items-center">
-                <h3 class="font-semibold">Suporte</h3>
-                <button id="fechar-chat" class="text-white/80 hover:text-white">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <h3 class="font-bold text-lg">Suporte Online</h3>
+                <button id="fechar-chat" class="text-white/90 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
         </div>
-        <div id="chat-messages" class="flex-1 p-4 space-y-3 overflow-y-auto bg-gray-50 text-sm"></div>
-        <div class="p-3 border-t flex gap-2">
-            <input type="text" id="chat-input" class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Digite sua mensagem...">
-            <button id="chat-send" class="bg-primary text-white p-2 rounded-lg hover:bg-primary-dark transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                </svg>
-            </button>
+
+        <!-- Área de mensagens (usuário comum) -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-gray-50 to-white"></div>
+
+        <!-- Input -->
+        <div class="p-4 border-t bg-white">
+            <div class="flex gap-3">
+                <input type="text" id="chat-input"
+                       class="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                       placeholder="Digite sua mensagem...">
+                <button id="chat-send"
+                        class="bg-indigo-500 hover:bg-indigo-600 text-white p-3.5 rounded-full transition shadow-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 </div>
-
-
 
 {% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const usuarioNome = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
-    const isAdmin = {{ request.user.is_staff|yesno:"true,false" }};
-    const userPapel = "{{ request.user.papel|default:''|lower }}";
+    console.log("✅ DOMContentLoaded disparou");
 
-    // Elementos do DOM
+    const usuarioNome = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
+    const isStaff = "{{ request.user.is_staff|yesno:'true,false' }}" === "true";
+    const papel = "{{ request.user.papel|default:''|lower }}";
+    const isAtendente = isStaff || papel === "gestor";  // <--- CHAVE
+
     const abrirChatBtn = document.getElementById('abrir-chat');
     const fecharChatBtn = document.getElementById('fechar-chat');
     const chatModal = document.getElementById('chat-modal');
@@ -285,175 +298,398 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatSend = document.getElementById('chat-send');
     const badge = document.getElementById('chat-badge');
 
-    if (!abrirChatBtn || !fecharChatBtn || !chatModal || !chatContent || !chatMessages || !chatInput || !chatSend || !badge) {
-        console.error("Chat não carregou: elemento ausente");
-        return;
+    // ==================== LISTA DE ATENDENTES ====================
+    let atendentesOnline = [];
+    let listaAtendentes = null;
+    let atendenteSelecionado = null;
+
+    if (!isAtendente) {
+        listaAtendentes = document.createElement('div');
+        listaAtendentes.id = 'lista-atendentes';
+        listaAtendentes.className = 'px-5 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-200';
+
+        listaAtendentes.innerHTML = `
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2 text-sm font-bold text-indigo-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2
+                                 c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857
+                                 M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002
+                                 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2
+                                 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2
+                                 0 014 0z"/>
+                    </svg>
+                    <span>Escolha seu atendente</span>
+                </div>
+                <span id="contador-atendentes"
+                      class="bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-bold">0</span>
+            </div>
+            <div id="atendentes-lista" class="space-y-2"></div>
+        `;
+
+        chatContent.insertBefore(listaAtendentes, chatMessages);
     }
 
-    // Abrir/Fechar Chat
+    function atualizarListaAtendentes() {
+        if (isAtendente || !listaAtendentes) return;
+
+        const lista = listaAtendentes.querySelector('#atendentes-lista');
+        const contador = listaAtendentes.querySelector('#contador-atendentes');
+        lista.innerHTML = '';
+        contador.textContent = atendentesOnline.length;
+
+        if (atendentesOnline.length === 0) {
+            lista.innerHTML = '<p class="text-xs text-gray-500 italic">Nenhum atendente online no momento.</p>';
+            return;
+        }
+
+        atendentesOnline.forEach(admin => {
+            const item = document.createElement('div');
+            const selecionado = atendenteSelecionado?.channel === admin.channel;
+            item.className = `flex items-center justify-between p-3 bg-white rounded-xl shadow-sm hover:shadow-md
+                              transition-all cursor-pointer border
+                              ${selecionado ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-200'}`;
+            item.onclick = () => selecionarAtendente(admin);
+
+            item.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <div>
+                        <p class="font-semibold text-gray-800">${admin.nome}</p>
+                        <p class="text-xs text-gray-500">Clique para iniciar</p>
+                    </div>
+                </div>
+                ${selecionado
+                    ? '<svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
+                    : '<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>'}
+            `;
+            lista.appendChild(item);
+        });
+    }
+
+    function selecionarAtendente(admin) {
+        atendenteSelecionado = admin;
+        atualizarListaAtendentes();
+
+        window.chatSocket.send(JSON.stringify({
+            type: "select_attendant",
+            admin_channel: admin.channel
+        }));
+
+        const bubble = document.createElement('div');
+        bubble.className = 'max-w-xs self-center my-3';
+        bubble.innerHTML = `
+            <div class="bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-800 rounded-2xl px-5 py-3 text-sm font-medium shadow-sm">
+                <svg class="w-5 h-5 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0
+                    00-1.414-1.414L9 10.586 7.707 9.293a1 1
+                    0 00-1.414 1.414l2 2a1 1
+                    0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                Você escolheu <strong>${admin.nome}</strong> como atendente!
+            </div>
+        `;
+        chatMessages.appendChild(bubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // ==================== ABRIR/FECHAR CHAT ====================
     abrirChatBtn.addEventListener('click', () => {
         badge.textContent = "0";
         badge.classList.add('hidden');
         chatModal.classList.remove('hidden');
-        setTimeout(() => chatContent.classList.remove('scale-95', 'opacity-0'), 10);
+        setTimeout(() => chatContent.style.transform = 'translateY(0)', 50);
         chatInput.focus();
+        console.log("💬 Chat aberto");
     });
 
-    fecharChatBtn.addEventListener('click', fecharChat);
-    function fecharChat() {
-        chatContent.classList.add('scale-95', 'opacity-0');
-        setTimeout(() => chatModal.classList.add('hidden'), 200);
-    }
-    chatModal.addEventListener('click', e => { if (e.target === chatModal) fecharChat(); });
+    fecharChatBtn.addEventListener('click', () => {
+        chatContent.style.transform = 'translateY(100%)';
+        setTimeout(() => chatModal.classList.add('hidden'), 300);
+        console.log("❌ Chat fechado");
+    });
 
-    // WebSocket
+    chatModal.addEventListener('click', e => {
+        if (e.target === chatModal) fecharChatBtn.click();
+    });
+
+    // ==================== WEBSOCKET ====================
     const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
     if (!window.chatSocket) {
         window.chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/{{ request.user.username }}/`);
-
         window.chatSocket.onopen = () => {
-            console.log(`${isAdmin ? "Admin/Gestor" : "Usuário"} conectado ao chat`);
-
-            if (isAdmin || userPapel === "gestor") {
+            console.log("🌐 WebSocket conectado");
+            if (!isAtendente) {
                 setTimeout(() => {
-                    const nome = usuarioNome.split(" ")[0];
-                    window.chatSocket.send(JSON.stringify({
-                        mensagem: `Olá! Sou o ${nome}, em que posso ajudar?`,
-                        admin: true
-                    }));
-                }, 2000);
+                    window.chatSocket.send(JSON.stringify({ type: "request_admins_list" }));
+                }, 500);
             }
         };
     }
 
-    // ABAS PARA ADMIN
+
+    // ==================== ABAS (SÓ PARA ATENDENTES) ====================
     let abas = {};
     let tabsContainer = null;
-    if (isAdmin) {
+    let messagesContainer = null;
+
+    if (isAtendente) {
         tabsContainer = document.createElement('div');
         tabsContainer.id = 'chat-tabs';
-        tabsContainer.className = 'flex gap-2 mb-3 overflow-x-auto pb-2 border-b border-gray-200';
-        chatContent.insertBefore(tabsContainer, chatMessages);
+        tabsContainer.className = 'flex gap-3 px-5 pt-4 pb-2 overflow-x-auto bg-white/70 backdrop-blur-sm border-b border-gray-200';
+
+        messagesContainer = document.createElement('div');
+        messagesContainer.id = 'admin-messages-container';
+        messagesContainer.className = 'flex-1 overflow-hidden relative bg-gradient-to-b from-gray-50 to-white';
+
+        chatMessages.after(messagesContainer);
+        chatContent.insertBefore(tabsContainer, messagesContainer);
+        chatMessages.classList.add('hidden');
     }
 
     function criarOuAtivarAba(usuario) {
-        if (abas[usuario]) { ativarAba(usuario); return abas[usuario].area; }
+        if (!isAtendente) return chatMessages;
+
+        if (abas[usuario]) {
+            ativarAba(usuario);
+            return abas[usuario].scrollArea;
+        }
 
         const tabBtn = document.createElement('button');
-        tabBtn.className = 'px-4 py-2 bg-gray-100 hover:bg-primary hover:text-white rounded-xl text-sm font-medium transition whitespace-nowrap';
+        tabBtn.className = 'px-5 py-2.5 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-full text-sm font-semibold text-gray-700 hover:border-indigo-500 hover:bg-indigo-50 transition-all duration-200 shadow-sm relative';
         tabBtn.textContent = usuario;
         tabBtn.onclick = () => ativarAba(usuario);
 
+        const badgeAba = document.createElement('span');
+        badgeAba.className = 'absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden';
+        tabBtn.appendChild(badgeAba);
+
         const area = document.createElement('div');
-        area.className = 'hidden flex-1 overflow-y-auto max-h-96 bg-gray-50 rounded-xl p-4';
+        area.className = 'absolute inset-0 flex flex-col hidden';
         area.dataset.usuario = usuario;
 
+        const scrollArea = document.createElement('div');
+        scrollArea.className = 'flex-1 overflow-y-auto p-5 space-y-4';
+        area.appendChild(scrollArea);
+        messagesContainer.appendChild(area);
         tabsContainer.appendChild(tabBtn);
-        chatContent.insertBefore(area, chatInput.parentNode);
-        abas[usuario] = { btn: tabBtn, area: area };
+
+        abas[usuario] = { btn: tabBtn, area, scrollArea, badge: badgeAba, unread: 0, user_channel: null };
         ativarAba(usuario);
-        return area;
+        return scrollArea;
     }
 
     function ativarAba(usuario) {
+        if (!isAtendente) return;
         Object.values(abas).forEach(a => {
             a.area.classList.add('hidden');
-            a.btn.classList.remove('bg-primary', 'text-white');
-            a.btn.classList.add('bg-gray-100');
+            a.btn.classList.remove('bg-indigo-500', 'text-white', 'border-indigo-500', 'shadow-lg');
+            a.btn.classList.add('bg-white/80', 'text-gray-700');
         });
+
         const tab = abas[usuario];
         if (tab) {
             tab.area.classList.remove('hidden');
-            tab.btn.classList.add('bg-primary', 'text-white');
-            tab.btn.classList.remove('bg-gray-100');
+            tab.btn.classList.add('bg-indigo-500', 'text-white', 'border-indigo-500', 'shadow-lg');
+            tab.btn.classList.remove('bg-white/80', 'text-gray-700');
+            tab.badge.classList.add('hidden');
+            tab.unread = 0;
         }
     }
 
-    // MODAL DE ALERTA (NOVA VERSÃO - LINDONA)
-    function exibirModalAlerta(remetente, mensagem) {
-        if (!isAdmin || document.getElementById('chat-alert-modal')) return;
+// ==================== RECEBER MENSAGENS ====================
+window.chatSocket.onmessage = function (event) {
+    const data = JSON.parse(event.data);
+    const remetente = (data.remetente || data.usuario_nome || "Usuário").trim();
 
-        const overlay = document.createElement('div');
-        overlay.id = 'chat-alert-modal';
-        overlay.className = 'fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4';
+    // LISTA DE ATENDENTES
+    if (!isAtendente && data.type === "admins_online_list") {
+        atendentesOnline = data.admins || [];
+        atualizarListaAtendentes();
+        return;
+    }
 
-        overlay.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 max-w-sm w-full p-6 transform transition-all duration-300 scale-95 opacity-0 translate-y-4 backdrop-blur-xl">
-                <div class="text-center space-y-5">
-                    <div class="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center animate-pulse">
-                        <svg class="w-9 h-9 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                        </svg>
-                    </div>
+    if (!isAtendente && data.type === "admin_status") {
+        const admin = { nome: data.username, channel: data.channel };
+        if (data.online && !atendentesOnline.find(a => a.channel === data.channel)) {
+            atendentesOnline.push(admin);
+        } else if (!data.online) {
+            atendentesOnline = atendentesOnline.filter(a => a.channel !== data.channel);
+        }
+        atualizarListaAtendentes();
+        return;
+    }
 
-                    <div>
-                        <h3 class="text-2xl font-bold text-gray-800">Nova mensagem!</h3>
-                        <p class="text-sm text-gray-500 mt-1">Alguém precisa da sua atenção</p>
-                    </div>
+   // ATENDENTE: Usuário escolheu você
+if (isAtendente && data.type === "user_selected_you") {
+    const usuario = data.username;
 
-                    <div class="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
-                        <p class="text-xs text-gray-600 font-medium">De:</p>
-                        <p class="text-lg font-semibold text-primary truncate">${remetente}</p>
-                    </div>
+    // 🔒 Se a aba já existe, apenas ativa — não recria
+    let scrollArea;
+    if (abas[usuario]) {
+        scrollArea = abas[usuario].scrollArea;
+        Object.values(abas).forEach(a => a.area.classList.add('hidden'));
+        abas[usuario].area.classList.remove('hidden');
+    } else {
+        scrollArea = criarOuAtivarAba(usuario);
+    }
 
-                    <div class="bg-blue-50/60 rounded-xl px-4 py-3 border border-blue-200">
-                        <p class="text-sm text-gray-700 italic leading-relaxed truncate">"${mensagem}"</p>
-                    </div>
+    // 🔒 Evita duplicar a mensagem de seleção
+    const jaExiste = Array.from(scrollArea.children).some(el =>
+        el.textContent.includes(`${usuario} escolheu você como atendente`)
+    );
+    if (!jaExiste) {
+        const sys = document.createElement('div');
+        sys.className = 'text-center text-xs text-indigo-600 my-3 font-medium';
+        sys.innerHTML = `<em>${usuario} escolheu você como atendente!</em>`;
+        scrollArea.appendChild(sys);
+    }
 
-                    <div class="flex gap-3 justify-center pt-2">
-                        <button type="button" onclick="fecharModalAlerta()"
-                                class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition font-medium text-sm">
-                            Ignorar
-                        </button>
-                        <button type="button" onclick="abrirChatEAba('${remetente}')"
-                                class="px-6 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-dark transition font-medium text-sm shadow-lg flex items-center gap-2">
-                            Abrir chat
-                        </button>
-                    </div>
+    if (abas[usuario]) {
+        abas[usuario].user_channel = data.user_channel;
+    }
+
+    scrollArea.scrollTop = scrollArea.scrollHeight;
+    return;
+}
+
+
+    // USUÁRIO COMUM
+    if (!isAtendente) {
+        if (data.admin && data.usuario_nome?.toLowerCase() !== usuarioNome.toLowerCase()) return;
+
+        const bubble = document.createElement('div');
+        bubble.className = data.admin ? 'max-w-xs self-start' : 'max-w-xs self-end';
+        bubble.innerHTML = `
+            <div class="${data.admin ? 'bg-white border border-gray-200 text-gray-800' : 'bg-indigo-500 text-white'}
+                        rounded-2xl ${data.admin ? 'rounded-tl-sm' : 'rounded-tr-sm'} px-4 py-3 shadow-md">
+                <div class="text-xs opacity-80 mb-1">
+                    ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                </div>
+                <div class="text-sm leading-relaxed">
+                    ${(data.mensagem || '').replace(/\n/g, '<br>')}
                 </div>
             </div>
         `;
-
-        requestAnimationFrame(() => {
-            overlay.querySelector('div').classList.remove('scale-95', 'opacity-0', 'translate-y-4');
-        });
-
-        document.body.appendChild(overlay);
-
-        // Fechar com ESC ou clique fora
-        const closeHandler = (e) => {
-            if (e.key === 'Escape' || e.target === overlay) fecharModalAlerta();
-        };
-        overlay.addEventListener('click', closeHandler);
-        document.addEventListener('keydown', closeHandler);
+        chatMessages.appendChild(bubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return;
     }
 
-    window.fecharModalAlerta = function() {
-        const overlay = document.getElementById('chat-alert-modal');
-        if (!overlay) return;
-        const modal = overlay.querySelector('div');
-        modal.classList.add('scale-95', 'opacity-0', 'translate-y-4');
-        setTimeout(() => overlay.remove(), 300);
-    };
+    // ATENDENTE: Mensagem do usuário
+    if (!data.admin) {
+        const scrollArea = criarOuAtivarAba(remetente);
+        const bubble = document.createElement('div');
+        bubble.className = 'max-w-xs self-start';
+        bubble.innerHTML = `
+            <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-md">
+                <div class="text-xs text-gray-500 mb-1">
+                    ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                </div>
+                <div class="text-sm text-gray-800 leading-relaxed">
+                    ${(data.mensagem || '').replace(/\n/g, '<br>')}
+                </div>
+            </div>
+        `;
+        scrollArea.appendChild(bubble);
+        scrollArea.scrollTop = scrollArea.scrollHeight;
 
-    window.abrirChatEAba = function(usuario) {
-        fecharModalAlerta();
-        abrirChatBtn.click();
-        setTimeout(() => {
-            criarOuAtivarAba(usuario);
-            ativarAba(usuario);
-        }, 100);
-    };
+        if (data.alert && chatModal.classList.contains('hidden')) {
+            incrementarBadge();
+            exibirModalAlerta(remetente, data.mensagem || '');
+            tocarSom();
+        }
 
-    // Som de notificação (WhatsApp style)
-    function tocarSom() {
-        if (!isAdmin) return;
-        const audio = new Audio('https://cdn.jsdelivr.net/gh/napstr/mui@master/tone.mp3');
-        audio.play().catch(() => {});
+        const aba = abas[remetente];
+        if (aba && aba.area.classList.contains('hidden')) {
+            aba.unread++;
+            aba.badge.textContent = aba.unread > 99 ? '99+' : aba.unread;
+            aba.badge.classList.remove('hidden');
+        }
+        return;
     }
 
-    // Badge + Notificações
+    // ATENDENTE: Mensagem do admin/gestor
+if (isAtendente && data.admin && data.type !== "user_selected_you") {
+    const abaAtiva = Object.values(abas).find(a => !a.area.classList.contains('hidden'));
+    if (!abaAtiva) return;
+
+    // 🔒 Evita duplicar mensagem idêntica
+    const jaExiste = Array.from(abaAtiva.scrollArea.children).some(el =>
+        el.textContent.includes(data.mensagem)
+    );
+    if (jaExiste) return;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'max-w-xs self-start';
+    bubble.innerHTML = `
+        <div class="bg-gray-200 text-gray-900 rounded-2xl rounded-tl-sm px-4 py-3 shadow">
+            <div class="text-xs opacity-70 mb-1">${data.usuario_nome || 'Usuário'}</div>
+            <div class="text-xs opacity-90 mb-1">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+            <div class="text-sm leading-relaxed">${(data.mensagem || '').replace(/\n/g,'<br>')}</div>
+        </div>
+    `;
+    abaAtiva.scrollArea.appendChild(bubble);
+    abaAtiva.scrollArea.scrollTop = abaAtiva.scrollArea.scrollHeight;
+    }
+
+};
+
+// ==================== ENVIAR MENSAGEM ====================
+function enviarMensagem() {
+    const mensagem = chatInput.value.trim();
+    if (!mensagem) return;
+
+    // Usuário comum
+    if (!isAtendente) {
+        window.chatSocket.send(JSON.stringify({ mensagem, admin: false }));
+        chatInput.value = '';
+        return;
+    }
+
+    // Atendente
+    const abaAtiva = Object.values(abas).find(a => !a.area.classList.contains('hidden'));
+    if (!abaAtiva || !abaAtiva.user_channel) {
+        alert('O usuário ainda não selecionou você como atendente.');
+        return;
+    }
+
+    // Envia ao servidor
+    window.chatSocket.send(JSON.stringify({
+        type: "direct_message",
+        mensagem,
+        user_channel: abaAtiva.user_channel
+    }));
+
+    // Exibe no chat local (mensagem do próprio atendente)
+    const bubble = document.createElement('div');
+    bubble.className = 'max-w-xs self-end';
+    bubble.innerHTML = `
+        <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 shadow-lg">
+            <div class="text-xs opacity-90 mb-1">${new Date().toLocaleTimeString('pt-BR', {
+                hour: '2-digit', minute: '2-digit'
+            })}</div>
+            <div class="text-sm leading-relaxed">${mensagem.replace(/\n/g, '<br>')}</div>
+        </div>
+    `;
+    abaAtiva.scrollArea.appendChild(bubble);
+    abaAtiva.scrollArea.scrollTop = abaAtiva.scrollArea.scrollHeight;
+
+    chatInput.value = '';
+}
+
+// ==================== EVENTOS DE ENVIO ====================
+chatSend.addEventListener('click', enviarMensagem);
+chatInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        enviarMensagem();
+    }
+});
+
+
+    // ==================== NOTIFICAÇÕES E MODAL ====================
     function incrementarBadge() {
         const valor = (parseInt(badge.textContent) || 0) + 1;
         badge.textContent = valor;
@@ -461,79 +697,90 @@ document.addEventListener('DOMContentLoaded', function() {
         badge.classList.add('animate-ping-once');
     }
 
-    // Receber mensagens
-    window.chatSocket.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        const remetente = (data.remetente || data.usuario_nome || "Usuário").trim();
-
-        if (!isAdmin) {
-            // Usuário comum
-            if (data.admin && data.usuario_nome?.toLowerCase() !== usuarioNome.toLowerCase()) return;
-
-            const msgEl = document.createElement('div');
-            msgEl.textContent = data.admin ? `Suporte: ${data.mensagem}` : `${usuarioNome}: ${data.mensagem}`;
-            msgEl.className = data.admin
-                ? "mb-2 p-3 bg-blue-50 text-blue-800 rounded-xl rounded-tl-none text-sm"
-                : "mb-2 p-3 bg-gray-100 text-gray-800 rounded-xl rounded-tr-none text-sm ml-auto max-w-xs";
-            chatMessages.appendChild(msgEl);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            return;
-        }
-
-        // Admin
-        if (!data.admin) {
-            const area = criarOuAtivarAba(remetente);
-            const msgEl = document.createElement('div');
-            msgEl.innerHTML = `<span class="text-xs text-gray-500">${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</span><br>
-                               <span class="font-medium">${remetente}:</span> ${data.mensagem}`;
-            msgEl.className = "mb-3 p-3 bg-white border border-gray-200 rounded-xl rounded-tl-none text-sm shadow-sm";
-            area.appendChild(msgEl);
-            area.scrollTop = area.scrollHeight;
-
-            if (data.alert && chatModal.classList.contains('hidden')) {
-                incrementarBadge();
-                exibirModalAlerta(remetente, data.mensagem);
-                tocarSom();
-            }
-        }
-
-        if (data.admin) {
-            const destino = data.usuario_nome || "Você";
-            const area = abas[destino]?.area || chatMessages;
-            const msgEl = document.createElement('div');
-            msgEl.innerHTML = `<span class="text-xs text-gray-500">${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</span><br>
-                               <span class="font-medium text-blue-600">Você:</span> ${data.mensagem}`;
-            msgEl.className = "mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl rounded-tr-none text-sm shadow-sm ml-auto max-w-xs";
-            area.appendChild(msgEl);
-            area.scrollTop = area.scrollHeight;
-        }
-    };
-
-    // Enviar mensagem
-    function enviarMensagem() {
-        const mensagem = chatInput.value.trim();
-        if (!mensagem) return;
-
-        if (!isAdmin) {
-            window.chatSocket.send(JSON.stringify({ mensagem, admin: false }));
-            chatInput.value = '';
-            return;
-        }
-
-        const ativo = Object.values(abas).find(a => !a.area.classList.contains('hidden'));
-        if (!ativo) { alert('Selecione um usuário para responder'); return; }
-
-        const destinatario = ativo.area.dataset.usuario;
-        window.chatSocket.send(JSON.stringify({
-            mensagem,
-            admin: true,
-            destinatario_username: destinatario
-        }));
-        chatInput.value = '';
+    function tocarSom() {
+        const audio = new Audio('https://cdn.jsdelivr.net/gh/napstr/mui@master/tone.mp3');
+        audio.play().catch(() => {});
     }
 
-    chatSend.addEventListener('click', enviarMensagem);
-    chatInput.addEventListener('keypress', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensagem(); } });
+    window.fecharModalAlerta = function() {
+        const modal = document.getElementById('chat-alert-modal');
+        if (!modal) return;
+        const card = modal.querySelector('div');
+        card.classList.add('scale-95', 'opacity-0', 'translate-y-8');
+        setTimeout(() => modal.remove(), 300);
+    };
+
+    window.abrirChatEAba = function(usuario) {
+        window.fecharModalAlerta();
+        abrirChatBtn.click();
+        setTimeout(() => {
+            criarOuAtivarAba(usuario);
+            ativarAba(usuario);
+        }, 350);
+    };
+
+    function exibirModalAlerta(remetente, mensagem) {
+        if (!isAtendente || document.getElementById('chat-alert-modal')) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'chat-alert-modal';
+        overlay.className = 'fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[60] p-4 animate-fadeIn';
+
+        overlay.innerHTML = `
+            <div class="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-sm w-full transform transition-all duration-300 scale-95 opacity-0 translate-y-8">
+                <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 p-6 text-white">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold">Nova mensagem!</h3>
+                            <p class="text-sm opacity-90">Alguém precisa de você AGORA</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div class="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+                        <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider">Remetente</p>
+                        <p class="text-lg font-bold text-indigo-600 truncate">${remetente}</p>
+                    </div>
+                    <div class="bg-indigo-50 rounded-2xl p-4 border-2 border-indigo-200">
+                        <p class="text-sm italic leading-relaxed text-gray-800">"${(mensagem || '').length > 80 ? (mensagem || '').substring(0,80)+'...' : (mensagem || '')}"</p>
+                    </div>
+                    <div class="flex gap-3 justify-center pt-3">
+                        <button onclick="fecharModalAlerta()" class="px-6 py-3 bg-gray-100 text-gray-700 rounded-2xl hover:bg-gray-200 transition font-semibold text-sm shadow-md">
+                            Ignorar
+                        </button>
+                        <button onclick="abrirChatEAba('${remetente}')" class="px-8 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-2xl hover:from-indigo-600 hover:to-indigo-700 transition font-bold text-sm shadow-xl flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                            </svg>
+                            ABRIR CHAT
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.querySelector('div').classList.remove('scale-95', 'opacity-0', 'translate-y-8'));
+
+        const close = (e) => { if (e.key === 'Escape' || e.target === overlay) fecharModalAlerta(); };
+        overlay.addEventListener('click', close);
+        document.addEventListener('keydown', close);
+    }
+
+    // Animação
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+        .animate-ping-once { animation: ping 1s cubic-bezier(0, 0, 0.2, 1) 1; }
+        @keyframes ping { 75%, 100% { transform: scale(1.5); opacity: 0; } }
+    `;
+    document.head.appendChild(style);
 });
 </script>
 
@@ -547,6 +794,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .animate-ping-once {
     animation: ping-once 0.4s ease-out;
 }
+
 </style>
 
 

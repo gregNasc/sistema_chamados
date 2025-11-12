@@ -830,6 +830,24 @@ def chat_admin_view(request):
         'usuarios': usuarios,
     })
 
+from django.http import JsonResponse
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+
+User = get_user_model()
+
+def atendentes_online(request):
+    dados = []
+    for u in User.objects.filter(is_active=True):
+        papel = getattr(u, "papel", "").lower()
+        if not (u.is_staff or papel in ["gestor", "suporte", "ti"]):
+            continue
+        dados.append({
+            "nome": u.get_full_name() or u.username,
+            "username": u.username,
+            "online": bool(cache.get(f"online_{u.username.lower()}"))
+        })
+    return JsonResponse(dados, safe=False)
 
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required

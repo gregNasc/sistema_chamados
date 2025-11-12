@@ -43,7 +43,7 @@ urlpatterns = [
     # ------------------------------
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('dashboard_admin/filtrar/', views.filtrar_dashboard, name='filtrar_dashboard'),
-
+    path('api/atendentes_online/', views.atendentes_online, name='atendentes_online'),
 
     # ------------------------------
     # Zeragem do banco (apenas admin)
