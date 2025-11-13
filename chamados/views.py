@@ -878,10 +878,14 @@ User = get_user_model()
 
 def atendentes_online(request):
     dados = []
+    seen_usernames = set()  # para não repetir
     for u in User.objects.filter(is_active=True):
         papel = getattr(u, "papel", "").lower()
         if not (u.is_staff or papel in ["gestor", "suporte", "ti"]):
             continue
+        if u.username in seen_usernames:
+            continue  # ignora duplicados
+        seen_usernames.add(u.username)
         dados.append({
             "nome": u.get_full_name() or u.username,
             "username": u.username,
