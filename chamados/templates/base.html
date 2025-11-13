@@ -136,6 +136,7 @@
         </nav>
 
         <!-- Filtros -->
+        {% if user.papel|lower != 'usuario' %}
         <div class="p-4 bg-gray-50 border-t">
             <h3 class="font-semibold text-gray-700 mb-3 text-sm">Filtros</h3>
             <form method="get" class="space-y-3">
@@ -165,7 +166,7 @@
                 </button>
             </form>
         </div>
-
+        {% endif %}
         <!-- Imagem no rodapé do sidebar -->
         <div class="mt-auto pt-4 border-t border-gray-200 p-4">
             <img src="{% static 'chamados/img/invent_foot.png' %}" alt="Invent" class="w-full rounded-lg object-contain">
@@ -264,22 +265,34 @@ document.addEventListener('DOMContentLoaded', () => {
         <!-- Input -->
         <div class="p-4 border-t bg-white">
             <div class="flex gap-3">
-                <input type="text" id="chat-input"
-                       class="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                       placeholder="Digite sua mensagem...">
-                <button id="chat-send"
-                        class="bg-indigo-500 hover:bg-indigo-600 text-white p-3.5 rounded-full transition shadow-lg">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                    </svg>
-                </button>
+
+                <div class="flex items-center gap-2">
+                 <input type="file" id="chat-file-input" class="hidden" accept="*/*">
+                    <label for="chat-file-input" class="cursor-pointer p-2 rounded-full hover:bg-gray-100 transition">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4.5 4.5 0 00-6.364-6.364l-6.586 6.586a6.5 6.5 0 109.192 9.192l6.364-6.364"/>
+                        </svg>
+                    </label>
+
+                    <button id="chat-send" class="p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition shadow-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                    </button>
+
+                    <input type="text" id="chat-input" placeholder="Digite sua mensagem..." class="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 {% endif %}
-
+<script>
+    // Variável global: usuário é gestor ou admin?
+    const isGestor = {{ request.user.is_superuser|yesno:"true,false" }}
+                    || "{{ request.user.papel|lower }}" === "gestor";
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log("✅ DOMContentLoaded disparou");
@@ -503,12 +516,78 @@ window.chatSocket.onmessage = function (event) {
     const data = JSON.parse(event.data);
     const remetente = (data.remetente || data.usuario_nome || "Usuário").trim();
 
+    console.log("WS IN:", data.type, data.message_id, data.usuario_nome, data.file_url ? 'has_url' : 'no_url');
+
+    // Evita duplicatas por message_id
+if (data.message_id && document.querySelector(`[data-message-id="${data.message_id}"]`)) {
+    console.log("🔁 Mensagem ignorada (duplicada):", data.message_id);
+    return;
+}
+
     // LISTA DE ATENDENTES
     if (!isAtendente && data.type === "admins_online_list") {
         atendentesOnline = data.admins || [];
         atualizarListaAtendentes();
         return;
     }
+
+    // Anexo de Arquivos
+if (data.type === "file_message" || data.type === "chat_file_message") {
+
+    // 🔹 Evita duplicar a mensagem de arquivo no remetente
+    if (!isAtendente && data.usuario_nome === usuarioNome) return;
+
+    const scrollArea = isAtendente
+        ? Object.values(abas).find(a => !a.area.classList.contains('hidden'))?.scrollArea
+        : chatMessages;
+
+    const bubble = document.createElement('div');
+    bubble.className = `max-w-xs ${data.admin ? 'self-start' : 'self-end'} mb-3`;
+
+    // Corrige origem do arquivo (tanto base64 quanto URL do servidor)
+    const fileSrc = data.data || data.file_url;
+
+    if (data.isImage) {
+        bubble.innerHTML = `
+            <div class="bg-white border border-gray-200 rounded-2xl ${data.admin ? 'rounded-tl-sm' : 'rounded-tr-sm'} p-2 shadow-md">
+                <img src="${fileSrc}" class="max-w-full rounded-lg cursor-pointer" onclick="abrirImagem('${fileSrc}')">
+                <p class="text-xs text-gray-500 mt-1">${data.filename} • ${data.tamanho}</p>
+            </div>
+        `;
+    } else {
+        const icon = getFileIcon(data.filename);
+        bubble.innerHTML = `
+            <a href="${fileSrc}" download="${data.filename}" class="block">
+                <div class="bg-white border border-gray-200 rounded-2xl ${data.admin ? 'rounded-tl-sm' : 'rounded-tr-sm'} p-3 shadow-md hover:shadow-lg transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 ${icon.bg} rounded-lg flex items-center justify-center">
+                            <span class="text-white text-lg font-bold">${icon.ext}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-gray-800 truncate">${data.filename}</p>
+                            <p class="text-xs text-gray-500">${data.tamanho}</p>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </div>
+                </div>
+            </a>
+        `;
+    }
+
+    scrollArea.appendChild(bubble);
+    scrollArea.scrollTop = scrollArea.scrollHeight;
+
+
+    if (data.alert && isAtendente && chatModal.classList.contains('hidden')) {
+        incrementarBadge();
+        exibirModalAlerta(data.remetente || data.usuario_nome, `Enviou um arquivo: ${data.filename}`);
+        tocarSom();
+    }
+
+    return;
+}
 
     if (!isAtendente && data.type === "admin_status") {
         const admin = { nome: data.username, channel: data.channel };
@@ -771,6 +850,137 @@ chatInput.addEventListener('keypress', e => {
         overlay.addEventListener('click', close);
         document.addEventListener('keydown', close);
     }
+    // ==================== ANEXO DE ARQUIVOS ====================
+const fileInput = document.getElementById('chat-file-input');
+
+fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    // Limite de 50MB
+    if (file.size > 50 * 1024 * 1024) {
+        alert('Arquivo muito grande! Máximo 50MB.');
+        fileInput.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64 = e.target.result;
+        const extensao = file.name.split('.').pop().toLowerCase();
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extensao);
+
+        const payload = {
+            type: "file_message",
+            filename: file.name,
+            filetype: file.type,
+            data: base64,
+            isImage,
+            tamanho: formatBytes(file.size)
+        };
+
+        if (!isAtendente) {
+            window.chatSocket.send(JSON.stringify(payload));
+        } else {
+            const abaAtiva = Object.values(abas).find(a => !a.area.classList.contains('hidden'));
+            if (!abaAtiva || !abaAtiva.user_channel) {
+                alert('O usuário ainda não selecionou você como atendente.');
+                return;
+            }
+            payload.user_channel = abaAtiva.user_channel;
+            window.chatSocket.send(JSON.stringify(payload));
+        }
+
+        // Exibe no chat local
+        exibirArquivoLocal(file, base64, isImage, true);
+    };
+
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+});
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function exibirArquivoLocal(file, base64, isImage, isOwn) {
+    const scrollArea = isAtendente
+        ? Object.values(abas).find(a => !a.area.classList.contains('hidden'))?.scrollArea
+        : chatMessages;
+
+    if (!scrollArea) return;
+
+    const bubble = document.createElement('div');
+    bubble.className = `max-w-xs ${isOwn ? 'self-end' : 'self-start'} mb-3`;
+
+    if (isImage) {
+        bubble.innerHTML = `
+            <div class="bg-white border border-gray-200 rounded-2xl ${isOwn ? 'rounded-tr-sm' : 'rounded-tl-sm'} p-2 shadow-md">
+                <img src="${base64}" class="max-w-full rounded-lg cursor-pointer" onclick="abrirImagem('${base64}')">
+                <p class="text-xs text-gray-500 mt-1">${file.name} • ${formatBytes(file.size)}</p>
+            </div>
+        `;
+    } else {
+        const icon = getFileIcon(file.name);
+        bubble.innerHTML = `
+            <a href="${base64}" download="${file.name}" class="block">
+                <div class="bg-white border border-gray-200 rounded-2xl ${isOwn ? 'rounded-tr-sm' : 'rounded-tl-sm'} p-3 shadow-md hover:shadow-lg transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 ${icon.bg} rounded-lg flex items-center justify-center">
+                            <span class="text-white text-lg font-bold">${icon.ext}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-gray-800 truncate">${file.name}</p>
+                            <p class="text-xs text-gray-500">${formatBytes(file.size)}</p>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </div>
+                </div>
+            </a>
+        `;
+    }
+
+    scrollArea.appendChild(bubble);
+    scrollArea.scrollTop = scrollArea.scrollHeight;
+}
+
+function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const icons = {
+        pdf: { ext: 'PDF', bg: 'bg-red-500' },
+        doc: { ext: 'DOC', bg: 'bg-blue-600' },
+        docx: { ext: 'DOC', bg: 'bg-blue-600' },
+        xls: { ext: 'XLS', bg: 'bg-green-600' },
+        xlsx: { ext: 'XLS', bg: 'bg-green-600' },
+        zip: { ext: 'ZIP', bg: 'bg-yellow-600' },
+        rar: { ext: 'RAR', bg: 'bg-yellow-600' },
+        txt: { ext: 'TXT', bg: 'bg-gray-600' },
+    };
+    return icons[ext] || { ext: ext.toUpperCase().substring(0,3), bg: 'bg-gray-500' };
+}
+
+function abrirImagem(src) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="relative max-w-4xl max-h-full">
+            <img src="${src}" class="max-w-full max-h-full object-contain">
+            <button class="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-2 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    `;
+    modal.onclick = () => modal.remove();
+    document.body.appendChild(modal);
+}
 
     // Animação
     const style = document.createElement('style');
@@ -783,6 +993,7 @@ chatInput.addEventListener('keypress', e => {
     document.head.appendChild(style);
 });
 </script>
+
 
 <!-- Animação do badge -->
 <style>

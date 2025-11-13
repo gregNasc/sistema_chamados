@@ -149,8 +149,14 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']  # criar pasta static para evitar warnings
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # ------------------------------
 # DEFAULT AUTO FIELD
 # ------------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# === Limite de upload de arquivos ===
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024

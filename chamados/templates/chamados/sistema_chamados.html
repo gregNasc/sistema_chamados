@@ -161,13 +161,23 @@
                                     {{ chamado.motivo }}
                                 {% endif %}
                             </td>
-                            <td class="px-6 py-3 text-secondary">{{ chamado.usuario }}</td>
-                            <td class="px-6 py-3 text-xs text-gray-500">{{ chamado.abertura|date:"d/m/Y H:i" }}</td>
+                            <td class="px-6 py-3 text-secondary">{{ chamado.aberto_por }}</td>
+                            <td class="px-6 py-3 text-xs text-gray-500">{{ chamado.aberto_em|date:"d/m/Y H:i" }}</td>
                             <td class="px-6 py-3 text-center">
+                                {% if user.is_staff or user.papel|lower == 'gestor' %}
                                 <button onclick="abrirModal({{ chamado.id }}, '{{ chamado.loja|escapejs }}')"
-                                        class="px-3 py-1.5 bg-warning text-white text-xs rounded-lg hover:bg-yellow-500 transition font-medium">
+                                    class="px-3 py-1.5 bg-warning text-white text-xs rounded-lg hover:bg-yellow-500 transition font-medium">
                                     Finalizar
                                 </button>
+                                {% else %}
+                            <button class="px-3 py-1.5 bg-gray-300 text-gray-600 text-xs rounded-lg cursor-not-allowed font-medium"
+                            disabled title="Apenas o atendente pode finalizar">
+                            Aguardando Finalização
+                            </button>
+                            <small class="text-gray-500 text-xs block mt-1">
+
+                            </small>
+                            {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -180,13 +190,14 @@
             Não há chamados abertos no momento.
         </p>
         {% endif %}
-
+        {% if user.is_staff or user.papel|lower == 'gestor' %}
         <div class="mt-6 text-center">
             <a href="{% url 'chamados:todos_chamados' %}"
                class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm font-medium">
                 Ver todos os chamados
             </a>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -275,6 +286,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const lojasExibidas = new Set();
 
     function mostrarModalAlerta(loja, callback) {
+        if (!isGestor) {
+        return callback(); // pula direto, sem mostrar nada
+    }
         if (lojasExibidas.has(loja)) return callback();
         const modal = document.getElementById('chamadoModal');
         const content = modal.querySelector('.transform');

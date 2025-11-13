@@ -76,12 +76,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         from .models import ChatMessage
         from django.contrib.auth import get_user_model
-        User = get_user_model()
+        import uuid
+        import json
 
+        User = get_user_model()
         data = json.loads(text_data)
         message_id = str(uuid.uuid4())  # ID único para deduplicação
 
-        # === SELEÇÃO DE ATENDENTE ===
+        # === 1. SELEÇÃO DE ATENDENTE ===
         if data.get("type") == "select_attendant" and not self.is_admin:
             admin_channel = data.get("admin_channel")
             if admin_channel in self.__class__.admins_online:
@@ -95,7 +97,81 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 })
             return
 
-        # === MENSAGEM DIRETA DO ADMIN/GESTOR ===
+        # === 2. MENSAGEM COM ARQUIVO ===
+        if data.get("type") == "file_message":
+            import base64, os
+            from django.core.files.base import ContentFile
+            from django.conf import settings
+
+            filename = data.get("filename", "arquivo")
+            is_image = data.get("isImage", False)
+
+            # === PEGA O USUÁRIO ===
+            try:
+                if self.is_admin:
+                    usuario_nome = self.__class__.admin_to_user.get(self.channel_name)
+                    if not usuario_nome:
+                        print(f"[ERRO] Admin {self.usuario_nome} não vinculado.")
+                        return
+                else:
+                    usuario_nome = self.usuario_nome
+
+                usuario = await database_sync_to_async(User.objects.get)(username=usuario_nome)
+            except User.DoesNotExist:
+                print(f"[ERRO] Usuário '{usuario_nome}' não existe.")
+                return
+
+            # === SALVA O ARQUIVO FISICAMENTE ===
+            file_data = data.get("data", "")
+            if file_data.startswith("data:"):
+                header, base64_data = file_data.split(",", 1)
+                file_bytes = base64.b64decode(base64_data)
+                path = os.path.join(settings.MEDIA_ROOT, "chat_uploads")
+                os.makedirs(path, exist_ok=True)
+                file_path = os.path.join(path, filename)
+                with open(file_path, "wb") as f:
+                    f.write(file_bytes)
+                file_url = f"{settings.MEDIA_URL}chat_uploads/{filename}"
+            else:
+                file_url = file_data  # caso já seja URL
+
+            # === SALVA NO BANCO ===
+            await database_sync_to_async(ChatMessage.objects.create)(
+                usuario=usuario,
+                texto=f"[ARQUIVO] {filename}",
+                enviado_por_admin=self.is_admin
+            )
+
+            remetente_nome = self.scope["user"].get_full_name() or self.scope["user"].username
+
+            payload = {
+                "type": "chat_file_message",
+                "filename": filename,
+                "file_url": file_url,
+                "filetype": data.get("filetype", ""),
+                "isImage": is_image,
+                "tamanho": data.get("tamanho"),
+                "remetente": remetente_nome,
+                "usuario_nome": usuario_nome,
+                "admin": self.is_admin,
+                "message_id": message_id
+            }
+
+            # === Envio ===
+            if not self.is_admin:
+                # Usuário → Admin
+                admin_channel = self.__class__.user_to_admin_channel.get(self.channel_name)
+                if admin_channel:
+                    await self.channel_layer.send(admin_channel, {**payload, "alert": True})
+                # Eco local: somente uma vez, sem alert
+                await self.send(text_data=json.dumps({**payload, "alert": False}))
+            else:
+                # Admin → Usuário
+                await self.channel_layer.group_send(f"chat_user_{usuario_nome}", payload)
+
+            return
+
+        # === 3. MENSAGEM DIRETA DO ADMIN/GESTOR ===
         if self.is_admin and data.get("type") == "direct_message":
             mensagem = data.get("mensagem", "").strip()
             if not mensagem:
@@ -103,7 +179,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             usuario_nome = self.__class__.admin_to_user.get(self.channel_name)
             if not usuario_nome:
-                print(f"[ERRO] Admin '{self.usuario_nome}' não vinculado a usuário.")
+                print(f"[ERRO] Admin '{self.usuario_nome}' não vinculado.")
                 return
 
             try:
@@ -134,10 +210,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # 2. Envia para o próprio admin (sincroniza abas)
             await self.channel_layer.send(self.channel_name, payload)
 
-            # NÃO envia para chat_admins → evita duplicação
             return
 
-        # === MENSAGEM DO USUÁRIO COMUM ===
+        # === 4. MENSAGEM DO USUÁRIO COMUM ===
         if data.get('mensagem') and not self.is_admin:
             mensagem = data['mensagem'].strip()
             if not mensagem:
@@ -173,7 +248,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Eco para o usuário
             await self.channel_layer.group_send(self.group_name, {
                 **payload,
-                "alert": False  # usuário não precisa de alerta
+                "alert": False
             })
             return
 
@@ -220,3 +295,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'alert': event.get('alert', False),
             'message_id': event.get('message_id')
         }))
+
+    async def chat_file_message(self, event):
+        # Remove 'alert' se existir (usuário não precisa)
+        clean_payload = {k: v for k, v in event.items() if k != "alert"}
+
+        await self.send(text_data=json.dumps(clean_payload))

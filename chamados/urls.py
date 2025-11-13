@@ -2,7 +2,9 @@ from django.urls import path, include
 from . import views
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
-
+from django.conf import settings
+from django.conf.urls.static import static
+from django.views.static import serve
 # Namespace do app
 app_name = 'chamados'
 
@@ -51,4 +53,9 @@ urlpatterns = [
     path('zerar-banco/', views.zerar_banco_view, name='zerar_banco'),
 
     path('run-migrations/', views.run_migrations, name='run-migrations'),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG is False:
+    urlpatterns += [
+        path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

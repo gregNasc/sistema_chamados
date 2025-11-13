@@ -14,6 +14,7 @@ from .utils import carregar_chamados_excel
 from .forms import LoginForm, ChamadoForm, UploadExcelForm
 from .models import Chamado, CustomUser, InventarioExcel
 from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.dateparse import parse_date
 from datetime import timedelta
 import threading
 import time
@@ -168,7 +169,7 @@ def sistema_chamados_view(request):
         data_selecionada = timezone.now().date()
 
     # Filtrar chamados pela data
-    chamados = Chamado.objects.filter(abertura__date=data_selecionada, status='Aberto')
+    chamados = Chamado.objects.filter(aberto_em__date=data_selecionada, status='Aberto')
 
     context = {
         'data_selecionada': data_selecionada.strftime('%Y-%m-%d'),  # ← STRING PARA O INPUT
@@ -311,8 +312,8 @@ def chamados_ativos(request):
     data_filtro = None
     if data_str:
         try:
-            data_filtro = datetime.strptime(data_str, "%Y-%m-%d").date()
-        except ValueError:
+            data_filtro = parse_date(data_str)  # Mais seguro que strptime
+        except (ValueError, TypeError):
             pass
 
     # --- Carrega inventário para os filtros dinâmicos ---
@@ -338,9 +339,9 @@ def chamados_ativos(request):
 
         if form.is_valid():
             chamado = form.save(commit=False)
+            chamado.aberto_por = request.user
+            chamado.aberto_em = timezone.now()
             chamado.status = 'Aberto'
-            chamado.abertura = timezone.now()
-            chamado.usuario = request.user
             chamado.save()
 
             messages.success(request, f"Chamado {chamado.loja} cadastrado com sucesso!")
@@ -348,63 +349,92 @@ def chamados_ativos(request):
         else:
             print("ERROS DO FORM:", form.errors)
             messages.warning(request, "Erro ao cadastrar chamado. Verifique os campos.")
+    else:
+        form = ChamadoForm(
+            regionais=regionais,
+            lojas=lojas,
+            lideres=lideres,
+            motivos_db=motivos_db
+        )
 
     # --- Lista de chamados abertos ---
     chamados = Chamado.objects.filter(status='Aberto')
     if data_filtro:
-        chamados = chamados.filter(abertura__date=data_filtro)
+        chamados = chamados.filter(aberto_em__date=data_filtro)
 
-    chamados = chamados.order_by('-abertura')
+    chamados = chamados.select_related('aberto_por', 'fechado_por').order_by('-aberto_em')
 
     return render(request, 'chamados/sistema_chamados.html', {
         'chamados': chamados,
+        'form': form,
         'regionais': regionais,
         'lideres': lideres,
+        'lojas': lojas,
         'data_selecionada': data_str or '',
     })
 @login_required
 def finalizar_chamado_view(request, pk):
     chamado = get_object_or_404(Chamado, pk=pk)
 
-    if request.method == 'POST' and chamado.status != 'Finalizado':
-        chamado.status = 'Finalizado'
-        chamado.fechamento = timezone.now()
-        chamado.observacao = request.POST.get('observacao', '')
+    # Só permite finalizar se ainda estiver aberto
+    if chamado.status == 'Finalizado':
+        messages.info(request, "Este chamado já foi finalizado.")
+        return redirect_to_chamados_ativos(request)
 
-        # Verifica se o usuário forneceu um tempo manual
+    if request.method == 'POST':
+        # Validação: só admin ou gestor pode finalizar
+        if not (request.user.is_staff or getattr(request.user, 'papel', '').lower() == 'gestor'):
+            messages.error(request, "Você não tem permissão para finalizar chamados.")
+            return redirect_to_chamados_ativos(request)
+
+        # Finaliza
+        chamado.status = 'Finalizado'
+        chamado.fechado_por = request.user
+        chamado.fechado_em = timezone.now()
+        chamado.observacao = request.POST.get('observacao', chamado.observacao or '')
+
+        # === TEMPO MANUAL ===
         if request.POST.get('usar_tempo_manual') == 'Sim':
-            minutos_str = request.POST.get('tempo_manual', '')
+            minutos_str = request.POST.get('tempo_manual', '').strip()
             try:
                 minutos = int(minutos_str)
                 if minutos > 0:
                     chamado.tempo_manual = timedelta(minutes=minutos)
-                    chamado.duracao = chamado.tempo_manual  # redundância segura
                 else:
                     chamado.tempo_manual = None
-                    chamado.duracao = chamado.fechamento - chamado.abertura if chamado.abertura else None
             except ValueError:
                 chamado.tempo_manual = None
-                chamado.duracao = chamado.fechamento - chamado.abertura if chamado.abertura else None
         else:
             chamado.tempo_manual = None
-            chamado.duracao = chamado.fechamento - chamado.abertura if chamado.abertura else None
 
+        # save() vai calcular duracao automaticamente
         chamado.save()
-        messages.success(request, f"✅ Chamado da loja {chamado.loja} ({chamado.lider}) finalizado!")
+
+        messages.success(
+            request,
+            f"Chamado da loja {chamado.loja} ({chamado.lider}) finalizado com sucesso!"
+        )
+        return redirect_to_chamados_ativos(request)
+
+    # Se for GET, redireciona (ou mostra modal)
+    return redirect_to_chamados_ativos(request)
 
 
-    # Recupera filtros da query string para manter na tela
-    data = request.GET.get('data', '')
-    regional = request.GET.get('regional', '')
-    loja = request.GET.get('loja', '')
-
-    # Redireciona para a view principal mantendo os filtros
-    redirect_url = f"{reverse('chamados:sistema_chamados')}?data={data}&regional={regional}&loja={loja}"
+# === FUNÇÃO AUXILIAR ===
+def redirect_to_chamados_ativos(request):
+    """Mantém os filtros da URL"""
+    params = request.GET.copy()
+    if 'page' in params:
+        del params['page']  # evita conflito com paginação
+    redirect_url = reverse('chamados:chamados_ativos')
+    if params:
+        from urllib.parse import urlencode
+        redirect_url += '?' + urlencode(params)
     return redirect(redirect_url)
 
 @login_required
 def todos_chamados(request):
-    chamados = Chamado.objects.all().order_by('-abertura')
+    chamados = Chamado.objects.all().order_by('-aberto_em')
     return render(request, 'todos_chamados.html', {'chamados': chamados})
 
 # ------------------------------
@@ -546,16 +576,24 @@ def gerar_grafico_bar(df, coluna, titulo, icone="ChartBar"):
     return imagem_para_base64(fig)
 
 def gerar_grafico_tempo_medio(df, titulo="Tempo Médio de Suporte"):
-    if 'abertura' not in df.columns or 'fechamento' not in df.columns or 'motivo' not in df.columns:
+    # CAMPOS ATUALIZADOS
+    if 'aberto_em' not in df.columns or 'fechado_em' not in df.columns or 'motivo' not in df.columns:
         return None
 
-    df_finalizados = df.dropna(subset=['abertura', 'fechamento', 'motivo']).copy()
+    df_finalizados = df.dropna(subset=['aberto_em', 'fechado_em', 'motivo']).copy()
     if df_finalizados.empty:
         return None
 
-    df_finalizados['abertura'] = pd.to_datetime(df_finalizados['abertura'])
-    df_finalizados['fechamento'] = pd.to_datetime(df_finalizados['fechamento'])
-    df_finalizados['tempo_minutos'] = (df_finalizados['fechamento'] - df_finalizados['abertura']).dt.total_seconds() / 60
+    # CONVERSÃO COM PDT (mais seguro)
+    df_finalizados['aberto_em'] = pd.to_datetime(df_finalizados['aberto_em'], errors='coerce')
+    df_finalizados['fechado_em'] = pd.to_datetime(df_finalizados['fechado_em'], errors='coerce')
+
+    # Filtra linhas inválidas
+    df_finalizados = df_finalizados.dropna(subset=['aberto_em', 'fechado_em'])
+    if df_finalizados.empty:
+        return None
+
+    df_finalizados['tempo_minutos'] = (df_finalizados['fechado_em'] - df_finalizados['aberto_em']).dt.total_seconds() / 60
 
     df_medio = df_finalizados.groupby('motivo')['tempo_minutos'].mean().sort_values()
     if df_medio.empty:
@@ -616,7 +654,7 @@ def filtrar_dashboard(request):
         return JsonResponse({'error': 'Tipo de filtro inválido'}, status=400)
 
     # 🔹 Filtra os chamados
-    chamados = Chamado.objects.filter(abertura__date__range=[inicio, fim])
+    chamados = Chamado.objects.filter(aberto_em__date__range=[inicio, fim])
 
     # 🔹 Converte em DataFrame
     df = pd.DataFrame(list(chamados.values()))
@@ -796,8 +834,10 @@ def exportar_excel_view(request):
             'Loja': c.loja,
             'Líder': c.lider,
             'Motivo': motivo_relatorio,
-            'Abertura': c.abertura.strftime('%d/%m/%Y %H:%M:%S') if c.abertura else '',
-            'Fechamento': c.fechamento.strftime('%d/%m/%Y %H:%M:%S') if c.fechamento else '',
+            'Abertura': c.aberto_em.strftime('%d/%m/%Y %H:%M:%S') if c.aberto_em else '',
+            'Fechamento': c.fechado_em.strftime('%d/%m/%Y %H:%M:%S') if c.fechado_em else '',
+            'Aberto por': c.aberto_por.get_full_name() if c.aberto_por else 'Usuário excluído',
+            'Fechado por': c.fechado_por.get_full_name() if c.fechado_por else '',
             'Status': c.status,
             'Duração': f'{horas}h {minutos}min',
             'Tempo Manual': f'{c.tempo_manual}' if c.tempo_manual else '',

@@ -26,9 +26,43 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(Chamado)
 class ChamadoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'usuario', 'regional', 'loja', 'lider', 'motivo', 'status', 'abertura', 'fechamento')
-    list_filter = ('status', 'regional', 'motivo')
-    search_fields = ('usuario__username', 'lider', 'motivo', 'loja')
+    list_display = (
+        'loja',
+        'lider',
+        'regional',
+        'motivo',
+        'aberto_por',
+        'aberto_em',
+        'status',
+        'fechado_por',
+        'fechado_em',
+        'duracao_formatada',
+    )
+    list_filter = (
+        'status',
+        'regional',
+        'loja',
+        ('aberto_em', admin.DateFieldListFilter),  # CORRETO
+    )
+    search_fields = ('loja', 'lider', 'regional', 'motivo', 'observacao')
+    readonly_fields = ('aberto_por', 'aberto_em', 'fechado_por', 'fechado_em', 'duracao')
+    date_hierarchy = 'aberto_em'
+
+    def duracao_formatada(self, obj):
+        if obj.duracao:
+            total_seconds = int(obj.duracao.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            return f"{hours}h {minutes}min" if hours else f"{minutes}min"
+        return "—"
+    duracao_formatada.short_description = "Duração"
+
+    def has_change_permission(self, request, obj=None):
+        # Só admin/gestor pode editar
+        return request.user.is_staff or getattr(request.user, 'papel', '').lower() == 'gestor'
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff
 
 
 @admin.register(InventarioExcel)
