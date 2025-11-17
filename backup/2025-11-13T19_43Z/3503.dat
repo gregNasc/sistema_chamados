@@ -1,0 +1,12 @@
+1	admin	logentry
+2	auth	permission
+3	auth	group
+4	contenttypes	contenttype
+5	sessions	session
+6	chamados	customuser
+7	chamados	chamado
+8	chamados	inventarioexcel
+9	chamados	chatmessage
+\.
+
+

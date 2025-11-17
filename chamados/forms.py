@@ -39,16 +39,18 @@ class ChamadoForm(forms.ModelForm):
         # Líder é CharField, então não precisa de choices
         # self.fields['lider'].choices = [(ld, ld) for ld in lideres]
 
-        # Motivos fixos + motivos do banco, sem duplicar
         motivos_fixos = [
             ('', 'Selecione um Motivo'),
             ('FALHA NA IMPRESSÃO', 'FALHA NA IMPRESSÃO'),
             ('IMPRESSORA QUEIMADA', 'IMPRESSORA QUEIMADA'),
+            ('IMPRESSORA NÃO RECONHECE', 'IMPRESSORA NÃO RECONHECE'),
             ('ROUTER NÃO FUNCIONA', 'ROUTER NÃO FUNCIONA'),
             ('NOTEBOOK NÃO LIGA', 'NOTEBOOK NÃO LIGA'),
             ('COLETOR NÃO CONECTA NA REDE', 'COLETOR NÃO CONECTA NA REDE'),
+            ('COLETOR NÃO TRANSMITE', 'COLETOR NÃO TRANSMITE'),
             ('OUTRO', 'OUTRO')
         ]
+        # Motivos fixos + motivos do banco, sem duplicar
         motivos_completos = motivos_fixos + [(m, m) for m in motivos_db if m not in dict(motivos_fixos)]
         self.fields['motivo'].choices = motivos_completos
 

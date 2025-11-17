@@ -1,6 +1,7 @@
 import matplotlib
 matplotlib.use("Agg")  # backend sem GUI
 import matplotlib.patheffects as path_effects
+from . import views
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -36,6 +37,10 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from .models import CustomUser
 from matplotlib.patheffects import withStroke
+from django.http import HttpResponse
+from django.utils import timezone
+import pandas as pd
+
 
 # ------------------------------
 # Funções auxiliares
@@ -718,15 +723,29 @@ def dashboard_view(request):
             notna_mask = df[col].notna()
             df.loc[notna_mask, col] = df.loc[notna_mask, col].dt.tz_convert(None)
 
-    #  Filtros disponíveis (somente valores únicos e não nulos)
-    filtros_disponiveis = {col: df[col].dropna().unique().tolist() for col in ['regional','status','motivo','lider']} if not df.empty else {}
+    #  Filtros disponíveis
+    filtros_disponiveis = {
+        col: df[col].dropna().unique().tolist()
+        for col in ['regional', 'status', 'motivo', 'lider']
+    } if not df.empty else {}
 
     plots = {}
     template = 'chamados/dashboard_usuario.html'
 
+    # ============================
+    #     Adiciona graficos
+    # ============================
+    graficos = [
+        ("status", "Status dos Chamados"),
+        ("regionais", "Chamados por Regional"),
+        ("lideres", "Principais Líderes"),
+        ("motivos", "Principais Motivos"),
+    ]
+    # ============================
+
     #  Admin tem todos os gráficos
     if not df.empty:
-        df_grafico = df.copy()  # para usar nos gráficos
+        df_grafico = df.copy()
 
         df_grafico['motivo_grafico'] = df_grafico.apply(
             lambda row: row['outro_motivo'] if row['motivo'] == 'OUTRO' and row['outro_motivo'] else row['motivo'],
@@ -744,9 +763,10 @@ def dashboard_view(request):
 
     return render(request, template, {
         'plots': plots,
+        'graficos': graficos,     # ✅ ENVIADO PARA O TEMPLATE
         'filters': filtros_disponiveis,
         'filters_selected': filtros,
-        'chamados': df.to_dict('records') if not df.empty else []
+        'chamados': df.to_dict('records') if not df.empty else [],
     })
 
 # ------------------------------
@@ -813,44 +833,222 @@ def upload_excel(request):
 
 @login_required
 def exportar_excel_view(request):
+    # -----------------------------
+    # 1. FILTROS DE DATA
+    # -----------------------------
+
+    inicio = request.GET.get('inicio')
+    fim = request.GET.get('fim')
+    mes = request.GET.get('mes')  # YYYY-MM
+
+    # Query base
     chamados = Chamado.objects.all()
 
+    # --- FILTRO POR MÊS ---
+    if mes:
+        try:
+            ano, mes_num = map(int, mes.split('-'))
+
+            inicio_mes = timezone.make_aware(
+                datetime(ano, mes_num, 1)
+            )
+
+            if mes_num == 12:
+                fim_mes = timezone.make_aware(datetime(ano + 1, 1, 1)) - timedelta(days=1)
+            else:
+                fim_mes = timezone.make_aware(datetime(ano, mes_num + 1, 1)) - timedelta(days=1)
+
+            chamados = chamados.filter(
+                aberto_em__date__range=[inicio_mes.date(), fim_mes.date()]
+            )
+        except Exception:
+            pass
+
+    # --- FILTRO POR PERÍODO CUSTOMIZADO ---
+    elif inicio and fim:
+        try:
+            inicio_dt = datetime.strptime(inicio, "%Y-%m-%d").date()
+            fim_dt = datetime.strptime(fim, "%Y-%m-%d").date()
+
+            chamados = chamados.filter(
+                aberto_em__date__range=[inicio_dt, fim_dt]
+            )
+        except Exception:
+            pass
+
+    # -----------------------------
+    # 2. SELEÇÃO DE COLUNAS
+    # -----------------------------
+
+    campos_permitidos = {
+        'id': 'ID',
+        'regional': 'Regional',
+        'loja': 'Loja',
+        'lider': 'Líder',
+        'motivo': 'Motivo',
+        'abertura': 'Abertura',
+        'fechamento': 'Fechamento',
+        'aberto_por': 'Aberto por',
+        'fechado_por': 'Fechado por',
+        'status': 'Status',
+        'duracao': 'Duração',
+        'tempo_manual': 'Tempo Manual',
+        'observacao': 'Observação',
+    }
+
+    # AGORA FUNCIONA COM CHECKBOXES!
+    campos_solicitados = request.GET.getlist('campos')
+
+    if campos_solicitados:
+        colunas_selecionadas = [
+            c for c in campos_solicitados if c in campos_permitidos
+        ]
+    else:
+        colunas_selecionadas = list(campos_permitidos.keys())  # padrão: todas
+
+    # -----------------------------
+    # 3. MONTAR DADOS
+    # -----------------------------
+
     data = []
-    for c in chamados:
+
+    for c in chamados.select_related('aberto_por', 'fechado_por'):
+
         duracao = c.tempo_manual or c.duracao or timedelta(0)
         total_minutos = int(duracao.total_seconds() // 60)
         horas = total_minutos // 60
         minutos = total_minutos % 60
 
-        # Se o motivo for OUTRO, adiciona o texto de outro_motivo
-        if c.motivo.upper() == 'OUTRO' and c.outro_motivo:
-            motivo_relatorio = f'OUTRO ({c.outro_motivo})'
-        else:
-            motivo_relatorio = c.motivo
+        motivo_relatorio = (
+            f"OUTRO ({c.outro_motivo})"
+            if c.motivo and c.motivo.upper() == "OUTRO" and c.outro_motivo
+            else c.motivo or ""
+        )
 
-        data.append({
-            'ID': c.id,
-            'Regional': c.regional,
-            'Loja': c.loja,
-            'Líder': c.lider,
-            'Motivo': motivo_relatorio,
-            'Abertura': c.aberto_em.strftime('%d/%m/%Y %H:%M:%S') if c.aberto_em else '',
-            'Fechamento': c.fechado_em.strftime('%d/%m/%Y %H:%M:%S') if c.fechado_em else '',
-            'Aberto por': c.aberto_por.get_full_name() if c.aberto_por else 'Usuário excluído',
-            'Fechado por': c.fechado_por.get_full_name() if c.fechado_por else '',
-            'Status': c.status,
-            'Duração': f'{horas}h {minutos}min',
-            'Tempo Manual': f'{c.tempo_manual}' if c.tempo_manual else '',
-            'Observação': c.observacao or '',
-        })
+        row = {}
+
+        # Apenas colunas pedidas
+        if 'id' in colunas_selecionadas:
+            row['ID'] = c.id
+
+        if 'regional' in colunas_selecionadas:
+            row['Regional'] = c.regional
+
+        if 'loja' in colunas_selecionadas:
+            row['Loja'] = c.loja
+
+        if 'lider' in colunas_selecionadas:
+            row['Líder'] = c.lider
+
+        if 'motivo' in colunas_selecionadas:
+            row['Motivo'] = motivo_relatorio
+
+        if 'abertura' in colunas_selecionadas:
+            row['Abertura'] = (
+                c.aberto_em.strftime('%d/%m/%Y %H:%M:%S') if c.aberto_em else ''
+            )
+
+        if 'fechamento' in colunas_selecionadas:
+            row['Fechamento'] = (
+                c.fechado_em.strftime('%d/%m/%Y %H:%M:%S') if c.fechado_em else ''
+            )
+
+        if 'aberto_por' in colunas_selecionadas:
+            row['Aberto por'] = (
+                c.aberto_por.get_full_name() if c.aberto_por else "Usuário excluído"
+            )
+
+        if 'fechado_por' in colunas_selecionadas:
+            row['Fechado por'] = (
+                c.fechado_por.get_full_name() if c.fechado_por else ""
+            )
+
+        if 'status' in colunas_selecionadas:
+            row['Status'] = c.status
+
+        if 'duracao' in colunas_selecionadas:
+            row['Duração'] = f"{horas}h {minutos}min"
+
+        if 'tempo_manual' in colunas_selecionadas:
+            row['Tempo Manual'] = str(c.tempo_manual) if c.tempo_manual else ""
+
+        if 'observacao' in colunas_selecionadas:
+            row['Observação'] = c.observacao or ""
+
+        data.append(row)
+
+    # -----------------------------
+    # 4. GERAR EXCEL
+    # -----------------------------
+
+    if not data:
+        return HttpResponse("Nenhum chamado encontrado para os filtros aplicados.", content_type="text/plain")
 
     df = pd.DataFrame(data)
+
+    # Respeitar ordem dos campos solicitados
+    df = df[[campos_permitidos[c] for c in colunas_selecionadas]]
+
+    # Criar response
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename="Lista de Chamados.xlsx"'
+
+    nome_arquivo = "Lista de Chamados"
+
+    if mes:
+        nome_arquivo += f"_{mes}"
+    elif inicio and fim:
+        nome_arquivo += f"_{inicio}_a_{fim}"
+
+    response['Content-Disposition'] = f'attachment; filename=\"{nome_arquivo}.xlsx\"'
     df.to_excel(response, index=False)
     return response
+
+def exportar_excel_form(request):
+    colunas = [
+        "id", "regional", "loja", "lider", "motivo", "abertura",
+        "fechamento", "aberto_por", "fechado_por", "status", "duracao",
+        "tempo_manual", "observacao",
+    ]
+
+    # Gera anos automaticamente com base nos chamados
+    from datetime import datetime
+    ano_atual = datetime.now().year
+    anos = list(range(2023, ano_atual + 1))  # ajuste se necessário
+
+    return render(request, "chamados/exportar_excel.html", {
+        "colunas": colunas,
+        "anos": anos,
+    })
+
+def exportar_excel_download(request):
+    if request.method == "POST":
+        colunas_selecionadas = request.POST.getlist("colunas")
+
+        if not colunas_selecionadas:
+            return HttpResponse("Nenhuma coluna selecionada!")
+
+        dados = Chamado.objects.values(*colunas_selecionadas)
+
+        wb = Workbook()
+        ws = wb.active
+
+        # Cabeçalho
+        ws.append(colunas_selecionadas)
+
+        # Dados
+        for linha in dados:
+            ws.append([linha[c] for c in colunas_selecionadas])
+
+        nome_arquivo = "chamados_exportados"
+        response = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}.xlsx"'
+
+        wb.save(response)
+        return response
 
 @login_required
 @user_passes_test(is_admin)
@@ -892,7 +1090,6 @@ def atendentes_online(request):
             "online": bool(cache.get(f"online_{u.username.lower()}"))
         })
     return JsonResponse(dados, safe=False)
-
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.management import call_command

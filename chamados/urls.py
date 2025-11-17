@@ -5,6 +5,8 @@ from django.urls import reverse_lazy
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
+from .views import exportar_excel_form, exportar_excel_view
+
 # Namespace do app
 app_name = 'chamados'
 
@@ -45,7 +47,8 @@ urlpatterns = [
     # ------------------------------
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('dashboard_admin/filtrar/', views.filtrar_dashboard, name='filtrar_dashboard'),
-    path('api/atendentes_online/', views.atendentes_online, name='atendentes_online'),
+    path('exportar/', exportar_excel_form, name='exportar_excel_form'),
+    path('exportar/download/', exportar_excel_view, name='exportar_excel'),
 
     # ------------------------------
     # Zeragem do banco (apenas admin)

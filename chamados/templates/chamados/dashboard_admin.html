@@ -53,7 +53,7 @@
         <!-- Status -->
         {% if plots.status %}
         <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
-             onclick="abrirGraficoModal('status', `{{ plots.status }}`)">
+             onclick="abrirGraficoModal('status')">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     Status dos Chamados
@@ -72,7 +72,7 @@
         <!-- Regionais -->
         {% if plots.regionais %}
         <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
-             onclick="abrirGraficoModal('regionais', `{{ plots.regionais }}`)">
+             onclick="abrirGraficoModal('regionais')">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     Chamados por Regional
@@ -91,7 +91,7 @@
         <!-- Líderes -->
         {% if plots.lideres %}
         <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
-             onclick="abrirGraficoModal('lideres', `{{ plots.lideres }}`)">
+             onclick="abrirGraficoModal('lideres')">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     Principais Líderes
@@ -110,7 +110,7 @@
         <!-- Motivos -->
         {% if plots.motivos %}
         <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
-             onclick="abrirGraficoModal('motivos', `{{ plots.motivos }}`)">
+             onclick="abrirGraficoModal('motivos')">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     Principais Motivos
@@ -129,7 +129,7 @@
         <!-- Tempo Médio -->
         {% if plots.tempo_medio %}
         <div class="bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group md:col-span-2"
-             onclick="abrirGraficoModal('tempo_medio', `{{ plots.tempo_medio }}`)">
+             onclick="abrirGraficoModal('tempo_medio')">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     Tempo Médio de Atendimento
@@ -182,7 +182,7 @@
 <script>
 let graficoModalAberto = false;
 
-function abrirGraficoModal(tipo, base64) {
+function abrirGraficoModal(tipo) {
     const modal = document.getElementById('grafico-modal');
     const content = modal.querySelector('.transform');
     const titulo = document.getElementById('modal-titulo');
@@ -196,13 +196,18 @@ function abrirGraficoModal(tipo, base64) {
         tempo_medio: 'Tempo Médio de Atendimento'
     };
 
+    const imgPequena = document.getElementById(`grafico-${tipo.replace('_', '-')}`);
+    if (!imgPequena) return;
+
+    const base64Atual = imgPequena.src.replace(/^data:image\/(png|jpeg|jpg|gif);base64,/, '');
+
     titulo.textContent = titulos[tipo] || 'Gráfico';
-    imagem.src = `data:image/png;base64,${base64}`;
+    imagem.src = `data:image/png;base64,${base64Atual}`;
+
     modal.classList.remove('hidden');
     setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
     graficoModalAberto = true;
 
-    // Fechar com ESC
     document.addEventListener('keydown', fecharComESC);
 }
 

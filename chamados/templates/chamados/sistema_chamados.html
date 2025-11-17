@@ -5,7 +5,7 @@
 <div class="space-y-8">
 
     <!-- Título Principal + Filtro por Data -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">{% for key, titulo in {
         <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
             Sistema de Chamados
         </h1>
@@ -315,7 +315,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Funções auxiliares
 function inicializarFormulario() {
-    const motivosFixos = ['', 'FALHA NA IMPRESSÃO', 'IMPRESSORA QUEIMADA', 'ROUTER NÃO FUNCIONA', 'NOTEBOOK NÃO LIGA', 'COLETOR NÃO CONECTA NA REDE', 'OUTRO'];
+    const motivosFixos = ['', 'FALHA NA IMPRESSÃO', 'IMPRESSORA QUEIMADA', 'IMPRESSORA NÃO RECONHECE', 'ROUTER NÃO FUNCIONA', 'NOTEBOOK NÃO LIGA', 'COLETOR NÃO CONECTA NA REDE',
+                         'COLETOR NÃO TRANSMITE',  'OUTRO',];
     const motivosDB = [{% for m in form.fields.motivo.choices %}'{{ m.0 }}',{% endfor %}].filter(m => !motivosFixos.includes(m));
     const todos = [...new Set(motivosFixos.concat(motivosDB))];
     const select = document.getElementById('motivo');

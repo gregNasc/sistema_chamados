@@ -1,0 +1,32 @@
+1	contenttypes	0001_initial	2025-09-26 17:28:42.89888+00
+2	contenttypes	0002_remove_content_type_name	2025-09-26 17:32:04.462489+00
+3	auth	0001_initial	2025-09-26 17:32:04.499778+00
+4	auth	0002_alter_permission_name_max_length	2025-09-26 17:32:04.504269+00
+5	auth	0003_alter_user_email_max_length	2025-09-26 17:32:04.507816+00
+6	auth	0004_alter_user_username_opts	2025-09-26 17:32:04.511744+00
+7	auth	0005_alter_user_last_login_null	2025-09-26 17:32:04.515168+00
+8	auth	0006_require_contenttypes_0002	2025-09-26 17:32:04.516167+00
+9	auth	0007_alter_validators_add_error_messages	2025-09-26 17:32:04.52143+00
+10	auth	0008_alter_user_username_max_length	2025-09-26 17:32:04.52649+00
+11	auth	0009_alter_user_last_name_max_length	2025-09-26 17:32:04.530421+00
+12	auth	0010_alter_group_name_max_length	2025-09-26 17:32:04.535789+00
+13	auth	0011_update_proxy_permissions	2025-09-26 17:32:04.539314+00
+14	auth	0012_alter_user_first_name_max_length	2025-09-26 17:32:04.544136+00
+15	chamados	0001_initial	2025-09-26 17:32:04.59472+00
+16	admin	0001_initial	2025-09-26 17:32:04.610769+00
+17	admin	0002_logentry_remove_auto_add	2025-09-26 17:32:04.617883+00
+18	admin	0003_logentry_add_action_flag_choices	2025-09-26 17:32:04.623455+00
+19	sessions	0001_initial	2025-09-26 17:32:04.633966+00
+20	chamados	0002_chamado_data_alter_chamado_abertura_and_more	2025-10-06 13:59:49.329101+00
+21	chamados	0003_inventarioexcel	2025-10-06 14:28:45.810185+00
+22	chamados	0004_alter_chamado_usuario	2025-10-06 15:44:15.075042+00
+23	chamados	0005_alter_inventarioexcel_table	2025-10-08 20:27:36.468636+00
+24	chamados	0006_chamado_outro_motivo	2025-10-14 20:33:11.766755+00
+25	chamados	0007_chatmessage	2025-10-28 17:19:05.392505+00
+26	chamados	0008_auto_20251017_1138	2025-10-28 17:19:05.395418+00
+27	chamados	0009_alter_customuser_papel	2025-10-28 17:19:05.470753+00
+28	chamados	0010_chamado_duracao_manual	2025-10-28 17:19:05.486281+00
+29	chamados	0011_rename_duracao_manual_chamado_tempo_manual	2025-10-28 17:19:05.576493+00
+\.
+
+
